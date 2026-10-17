@@ -3,7 +3,7 @@ import express from "express";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { clerkClient, clerkMiddleware, getAuth } from "@clerk/express";
-import { pool } from "./db.js";
+import { initializeDatabase, pool } from "./db.js";
 
 const requiredEnvironment = [
   "CLERK_PUBLISHABLE_KEY",
@@ -80,9 +80,18 @@ app.get("*", (_request, response) => {
 });
 
 async function start() {
-  app.listen(port, "0.0.0.0", () => {
-    console.log(`Workout Tracker server listening on port ${port}`);
-  });
+  try {
+    await initializeDatabase();
+    app.listen(port, "0.0.0.0", () => {
+      console.log(
+        "PostgreSQL connected; the users table is ready for this environment.",
+      );
+      console.log(`Workout Tracker server listening on port ${port}`);
+    });
+  } catch (error) {
+    console.error("PostgreSQL connection or schema initialization failed.", error);
+    process.exit(1);
+  }
 }
 
 void start();

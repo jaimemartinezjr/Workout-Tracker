@@ -4,7 +4,7 @@ The first feature adds Clerk sign-up/sign-in/sign-out and links each signed-in C
 
 ## Database setup
 
-Replit provides separate managed PostgreSQL databases for development and production. The app uses Replit's `DATABASE_URL` in each environment; do not copy the development URL into production. The development database has the `users` table used by sign-in. When you publish, Replit's Publish flow can create the production database and apply the development schema to it. Do not overwrite production data unless you intend to replace it.
+Replit provides a managed PostgreSQL database for development and supplies its private `DATABASE_URL` to the server. On startup in development, the server connects and creates the `users` table if it is missing. In production, the server only checks the database and expects the schema to have been applied through Replit's Publish flow. Do not copy the development URL into production or overwrite production data unless you intend to replace it.
 
 For local development outside Replit, provide your own PostgreSQL connection string as `DATABASE_URL`.
 
@@ -15,7 +15,7 @@ For local development outside Replit, provide your own PostgreSQL connection str
 3. Install dependencies with `npm install`.
 4. Start the app with `npm run dev`.
 
-Vite serves the interface on port 5173 and forwards `/api` requests to the Express server on port 3000. Each authenticated request to `/api/me` uses the verified Clerk user ID as the database key; clients cannot choose another account's ID. Production schema changes are applied through Replit's Publish flow, not at server startup.
+Vite serves the interface on port 5000 and forwards `/api` requests to the Express server on port 3000. Each authenticated request to `/api/me` uses the verified Clerk user ID as the database key; clients cannot choose another account's ID.
 
 ## Environment
 
