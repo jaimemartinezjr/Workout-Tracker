@@ -56,3 +56,18 @@ A dark charcoal interface with bright green accents, clear high-contrast workout
 ## 7. Risks and cuts
 
 The feature I'm least sure I can build correctly is data isolation across workouts and all their related records, so one user can never access another user's data. If time runs short, I'll cut optional chart controls such as custom date ranges and animation polish first; I'll keep the required features and basic goal-progress charts.
+
+## Plan vs. Reality
+
+| Planned feature | Shipped / Changed / Cut | Status (Done/Backlogged) | Learning | What changed and why (one line) |
+|---|---|---|---|---|
+| Sign up, log in, log out, and user data isolation | | | | |
+| Database model: users and related workout tables | | | | |
+| Create, view, edit, and delete strength and running workouts | | | | |
+| Required-field validation with friendly messages | | | | |
+| Goal targets for lifts and runs | | | | |
+| Progress charts for lifts and running | | | | |
+| Create and reuse workout templates | | | | |
+| Star templates and view starred templates | | | | |
+| Search, filter, and sort workouts | | | | |
+| Dashboard with charts and summary stats | | | | |
