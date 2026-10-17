@@ -3,7 +3,7 @@ import express from "express";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { clerkClient, clerkMiddleware, getAuth } from "@clerk/express";
-import { initializeDatabase, pool } from "./db.js";
+import { pool } from "./db.js";
 
 const requiredEnvironment = [
   "CLERK_PUBLISHABLE_KEY",
@@ -80,15 +80,9 @@ app.get("*", (_request, response) => {
 });
 
 async function start() {
-  try {
-    await initializeDatabase();
-    app.listen(port, "0.0.0.0", () => {
-      console.log(`Workout Tracker server listening on port ${port}`);
-    });
-  } catch (error) {
-    console.error("The database could not be initialized.", error);
-    process.exit(1);
-  }
+  app.listen(port, "0.0.0.0", () => {
+    console.log(`Workout Tracker server listening on port ${port}`);
+  });
 }
 
 void start();
