@@ -14,7 +14,7 @@ I'm building a strength and performance tracker because I work out five times a 
 6. As a user, I want to create and reuse strength or running workout templates, so I don't have to enter each workout from scratch.
 7. As a user, I want to star templates and see a Starred view, so I can quickly find routines I reuse.
 8. As a user, I want to search and filter my workouts by date, activity, or exercise and sort them (newest first, or by weight/distance), so I can find a past session quickly.
-9. As a user, I want a dashboard with progress charts and summary stats, so I can check my training at a glance.
+9. As a user, I want charts showing a selected lift's weight and reps over time and running distance and pace over time, plus stats for workouts this week, heaviest set, and longest run distance, so I can check my training at a glance.
 
 By the due date, I will enter at least five real workouts from my own training; I will not use placeholder entries.
 
