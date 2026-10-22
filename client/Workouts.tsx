@@ -506,20 +506,28 @@ export default function Workouts({ getToken, weightUnit, distanceUnit, onWeightU
                     <button className="workouts-text-button" type="button" onClick={addExercise}>+ Add exercise</button>
                   </div>
                   <div className="exercise-table-head" aria-hidden="true">
-                    <span>EXERCISE</span><span>SETS</span><span>REPS</span><span>LOAD ({weightUnit})</span><span />
+                    <span /><span>EXERCISE</span><span>SETS</span><span>REPS</span><span>LOAD ({weightUnit})</span><span />
                   </div>
                   <div className="exercise-rows">
                     {draft.exercises.map((exercise, index) => (
                       <div className="exercise-row" key={`exercise-${index}`}>
                         <span className="set-row-number">{String(index + 1).padStart(2, "0")}</span>
-                        <label className="workout-sr-only" htmlFor={`exercise-${index}`}>Exercise {index + 1}</label>
-                        <input id={`exercise-${index}`} value={exercise.exercise_name} onChange={(event) => updateExercise(index, "exercise_name", event.target.value)} placeholder="Exercise" maxLength={80} />
-                        <label className="workout-sr-only" htmlFor={`sets-${index}`}>Number of sets for exercise {index + 1}</label>
-                        <input id={`sets-${index}`} type="number" min="1" max="100" step="1" inputMode="numeric" value={exercise.set_count} onChange={(event) => updateExercise(index, "set_count", event.target.value)} placeholder="3" />
-                        <label className="workout-sr-only" htmlFor={`reps-${index}`}>Reps per set for exercise {index + 1}</label>
-                        <input id={`reps-${index}`} type="number" min="1" step="1" inputMode="numeric" value={exercise.reps} onChange={(event) => updateExercise(index, "reps", event.target.value)} placeholder="5" />
-                        <label className="workout-sr-only" htmlFor={`weight-${index}`}>Weight in {weightUnit} for exercise {index + 1}</label>
-                        <input id={`weight-${index}`} type="number" min="0" step="any" inputMode="decimal" value={exercise.weight} onChange={(event) => updateExercise(index, "weight", event.target.value)} placeholder="0" />
+                        <label className="exercise-field exercise-name">
+                          <span>EXERCISE</span>
+                          <input id={`exercise-${index}`} value={exercise.exercise_name} onChange={(event) => updateExercise(index, "exercise_name", event.target.value)} placeholder="e.g. Bench press" maxLength={80} />
+                        </label>
+                        <label className="exercise-field exercise-sets">
+                          <span>SETS</span>
+                          <input id={`sets-${index}`} type="number" min="1" max="100" step="1" inputMode="numeric" value={exercise.set_count} onChange={(event) => updateExercise(index, "set_count", event.target.value)} placeholder="3" aria-label={`Number of sets for exercise ${index + 1}`} />
+                        </label>
+                        <label className="exercise-field exercise-reps">
+                          <span>REPS</span>
+                          <input id={`reps-${index}`} type="number" min="1" step="1" inputMode="numeric" value={exercise.reps} onChange={(event) => updateExercise(index, "reps", event.target.value)} placeholder="5" aria-label={`Reps per set for exercise ${index + 1}`} />
+                        </label>
+                        <label className="exercise-field exercise-load">
+                          <span>LOAD ({weightUnit})</span>
+                          <input id={`weight-${index}`} type="number" min="0" step="any" inputMode="decimal" value={exercise.weight} onChange={(event) => updateExercise(index, "weight", event.target.value)} placeholder="0" aria-label={`Weight in ${weightUnit} for exercise ${index + 1}`} />
+                        </label>
                         <button className="set-remove" type="button" onClick={() => removeExercise(index)} aria-label={`Remove exercise ${index + 1}`} disabled={draft.exercises.length === 1}>×</button>
                       </div>
                     ))}
