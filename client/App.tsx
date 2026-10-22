@@ -5,8 +5,8 @@ import {
   SignUpButton,
   UserButton,
   useAuth,
-  useUser,
 } from "@clerk/react";
+import Workouts from "./Workouts";
 
 type Account = {
   id: string;
@@ -18,7 +18,6 @@ type Account = {
 
 function App() {
   const { isLoaded, isSignedIn, getToken } = useAuth();
-  const { user } = useUser();
   const [account, setAccount] = useState<Account | null>(null);
   const [accountError, setAccountError] = useState("");
 
@@ -148,35 +147,23 @@ function App() {
       )}
 
       <Show when="signed-in">
-        <main className="account-layout">
-          <section className="account-heading">
-            <span className="eyebrow"><span className="status-dot" /> ACCOUNT CONNECTED</span>
-            <h1>Welcome back{user?.firstName ? `, ${user.firstName}` : ""}.</h1>
-            <p>Your account is ready. Your training history will live here as you build it.</p>
-          </section>
-          <section className="account-card">
-            <div className="account-card-heading">
-              <div>
-                <span className="eyebrow">PROFILE</span>
-                <h2>Your account</h2>
-              </div>
-              <UserButton />
-            </div>
-            {accountError ? (
+        <main className="workout-account-layout">
+          {accountError ? (
+            <div className="loading-state">
               <p className="message message-error" role="alert">{accountError}</p>
-            ) : account ? (
-              <dl className="account-details">
-                <div><dt>Email</dt><dd>{account.email}</dd></div>
-                <div><dt>Account ID</dt><dd className="account-id">{account.id}</dd></div>
-                <div><dt>Default units</dt><dd>{account.weight_unit} · {account.distance_unit}</dd></div>
-              </dl>
-            ) : (
-              <p className="message" aria-live="polite">Syncing your account…</p>
-            )}
-            <p className="privacy-note">
-              <span aria-hidden="true">●</span> Your account data is linked to your sign-in.
-            </p>
-          </section>
+            </div>
+          ) : account ? (
+            <Workouts
+              getToken={getToken}
+              weightUnit={account.weight_unit}
+              distanceUnit={account.distance_unit}
+            />
+          ) : (
+            <div className="loading-state" aria-live="polite">
+              <span className="loader" />
+              <p>Syncing your account…</p>
+            </div>
+          )}
         </main>
       </Show>
       <footer className="page-footer">

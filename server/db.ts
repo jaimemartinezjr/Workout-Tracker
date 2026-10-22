@@ -1,3 +1,4 @@
+import { readFile } from "node:fs/promises";
 import { Pool } from "pg";
 
 export const pool = new Pool({
@@ -9,6 +10,9 @@ export async function initializeDatabase() {
 
   if (process.env.NODE_ENV === "production") {
     await pool.query("SELECT 1 FROM public.users LIMIT 0");
+    await pool.query("SELECT 1 FROM public.workouts LIMIT 0");
+    await pool.query("SELECT 1 FROM public.lifting_sets LIMIT 0");
+    await pool.query("SELECT 1 FROM public.run_details LIMIT 0");
     return;
   }
 
@@ -23,4 +27,9 @@ export async function initializeDatabase() {
       created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
     )
   `);
+  const workoutSchema = await readFile(
+    new URL("./migrations/002_workouts.sql", import.meta.url),
+    "utf8",
+  );
+  await pool.query(workoutSchema);
 }

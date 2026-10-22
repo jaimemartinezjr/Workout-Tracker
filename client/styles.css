@@ -205,6 +205,11 @@ h1, h2, p { margin-top: 0; }
   flex: 1;
   padding: 75px 0;
 }
+.workout-account-layout {
+  display: block;
+  flex: 1;
+  min-width: 0;
+}
 .account-heading h1 { font-size: clamp(39px, 5vw, 60px); }
 .account-heading > p { max-width: 420px; color: var(--muted); line-height: 1.7; }
 .account-card {

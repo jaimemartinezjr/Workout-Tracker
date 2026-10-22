@@ -4,6 +4,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { clerkClient, clerkMiddleware, getAuth } from "@clerk/express";
 import { initializeDatabase, pool } from "./db.js";
+import { createWorkoutsRouter } from "./workouts.js";
 
 const requiredEnvironment = [
   "CLERK_PUBLISHABLE_KEY",
@@ -69,6 +70,14 @@ app.get("/api/me", async (request, response) => {
     });
   }
 });
+
+app.use(
+  "/api/workouts",
+  createWorkoutsRouter(pool, (request) => {
+    const { isAuthenticated, userId } = getAuth(request);
+    return isAuthenticated ? userId : null;
+  }),
+);
 
 app.get("/api/health", (_request, response) => {
   response.json({ status: "ok" });
