@@ -14,6 +14,10 @@ Build the workout create, list, detail, edit, and confirmed-delete flows for eac
 
 Run `npm run test:data-isolation` and `npm run build`. Verify in code that list, detail, update, delete, and child-record queries use the server-verified Clerk user ID; check the create/edit/delete UI and unit conversions. The isolation test must run without Clerk credentials and without connecting to the development or production database. Report failures honestly; do not claim a live sign-in or database test unless one was actually performed.
 
+## Preview feedback prompt
+
+Add a user-selectable, account-persisted weight unit switch between kg and lb. Keep stored loads canonical in kilograms and convert displayed values when switching units, including any workout draft currently being edited. Change strength entry to the conventional format of sets × reps at one load per exercise, such as 3 sets × 5 reps at 275 lb. Preserve existing workouts with different weights or rep counts across sets when editing them.
+
 ## Verification notes
 
 - Exact isolated test command: `npm run test:data-isolation`.

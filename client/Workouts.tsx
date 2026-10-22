@@ -5,6 +5,7 @@ import {
   listWorkouts,
   saveWorkout,
   type ActivityType,
+  type LiftingSet,
   type Workout,
   type WorkoutDetail,
   type WorkoutInput,
@@ -15,11 +16,13 @@ type Props = {
   getToken: () => Promise<string | null>;
   weightUnit: "kg" | "lb";
   distanceUnit: "km" | "mi";
+  onWeightUnitChange: (weightUnit: "kg" | "lb") => Promise<void>;
 };
 
-type SetDraft = {
+type ExerciseDraft = {
   exercise_name: string;
   weight: string;
+  set_count: string;
   reps: string;
 };
 
@@ -28,7 +31,7 @@ type WorkoutDraft = {
   activity_type: ActivityType;
   performed_on: string;
   notes: string;
-  sets: SetDraft[];
+  exercises: ExerciseDraft[];
   distance: string;
   pace: string;
   calories: string;
@@ -48,29 +51,54 @@ function newDraft(activity: ActivityType = "strength"): WorkoutDraft {
     activity_type: activity,
     performed_on: todayValue(),
     notes: "",
-    sets: [{ exercise_name: "", weight: "", reps: "" }],
+    exercises: [{ exercise_name: "", weight: "", set_count: "3", reps: "" }],
     distance: "",
     pace: "",
     calories: "",
   };
 }
 
-function draftFromDetail(detail: WorkoutDetail, weightUnit: "kg" | "lb", distanceUnit: "km" | "mi"): WorkoutDraft {
+function exerciseDraftsFromSets(sets: LiftingSet[], weightUnit: "kg" | "lb") {
   const multiplier = weightUnit === "lb" ? 1 / KG_PER_LB : 1;
+  const exercises: ExerciseDraft[] = [];
+
+  for (const set of sets) {
+    const weight = String(Number((set.weight_kg * multiplier).toFixed(2)));
+    const reps = String(set.reps);
+    const previous = exercises[exercises.length - 1];
+
+    if (
+      previous &&
+      previous.exercise_name === set.exercise_name &&
+      previous.weight === weight &&
+      previous.reps === reps
+    ) {
+      previous.set_count = String(Number(previous.set_count) + 1);
+    } else {
+      exercises.push({
+        exercise_name: set.exercise_name,
+        weight,
+        set_count: "1",
+        reps,
+      });
+    }
+  }
+
+  return exercises;
+}
+
+function draftFromDetail(detail: WorkoutDetail, weightUnit: "kg" | "lb", distanceUnit: "km" | "mi"): WorkoutDraft {
   const distanceMultiplier = distanceUnit === "mi" ? 1 / KM_PER_MI : 1;
   const run = detail.runDetails;
+  const exercises = exerciseDraftsFromSets(detail.sets, weightUnit);
   return {
     title: detail.workout.title,
     activity_type: detail.workout.activity_type,
     performed_on: detail.workout.performed_on.slice(0, 10),
     notes: detail.workout.notes ?? "",
-    sets: detail.sets.length
-      ? detail.sets.map((set) => ({
-          exercise_name: set.exercise_name,
-          weight: String(Number((set.weight_kg * multiplier).toFixed(2))),
-          reps: String(set.reps),
-        }))
-      : [{ exercise_name: "", weight: "", reps: "" }],
+    exercises: exercises.length
+      ? exercises
+      : [{ exercise_name: "", weight: "", set_count: "1", reps: "" }],
     distance: run ? String(Number((run.distance_km * distanceMultiplier).toFixed(2))) : "",
     pace: run
       ? String(Number(((run.pace_seconds_per_km * (distanceUnit === "mi" ? KM_PER_MI : 1)) / 60).toFixed(2)))
@@ -96,7 +124,7 @@ function errorMessage(error: unknown, fallback: string) {
   return error instanceof Error && error.message ? error.message : fallback;
 }
 
-export default function Workouts({ getToken, weightUnit, distanceUnit }: Props) {
+export default function Workouts({ getToken, weightUnit, distanceUnit, onWeightUnitChange }: Props) {
   const [workouts, setWorkouts] = useState<Workout[]>([]);
   const [listLoading, setListLoading] = useState(true);
   const [listError, setListError] = useState("");
@@ -109,6 +137,8 @@ export default function Workouts({ getToken, weightUnit, distanceUnit }: Props) 
   const [deleting, setDeleting] = useState(false);
   const [formMessage, setFormMessage] = useState("");
   const [formError, setFormError] = useState("");
+  const [weightUnitError, setWeightUnitError] = useState("");
+  const [updatingWeightUnit, setUpdatingWeightUnit] = useState(false);
 
   const sortedWorkouts = useMemo(
     () => [...workouts].sort((a, b) => b.performed_on.localeCompare(a.performed_on)),
@@ -173,23 +203,48 @@ export default function Workouts({ getToken, weightUnit, distanceUnit }: Props) 
     setFormMessage("");
   };
 
-  const updateSet = (index: number, key: keyof SetDraft, value: string) => {
+  const updateExercise = (index: number, key: keyof ExerciseDraft, value: string) => {
     setDraft((current) => current
-      ? { ...current, sets: current.sets.map((set, setIndex) => setIndex === index ? { ...set, [key]: value } : set) }
+      ? { ...current, exercises: current.exercises.map((exercise, exerciseIndex) => exerciseIndex === index ? { ...exercise, [key]: value } : exercise) }
       : current);
     setFormError("");
   };
 
-  const addSet = () => {
+  const addExercise = () => {
     setDraft((current) => current
-      ? { ...current, sets: [...current.sets, { exercise_name: "", weight: "", reps: "" }] }
+      ? { ...current, exercises: [...current.exercises, { exercise_name: "", weight: "", set_count: "3", reps: "" }] }
       : current);
   };
 
-  const removeSet = (index: number) => {
+  const removeExercise = (index: number) => {
     setDraft((current) => current
-      ? { ...current, sets: current.sets.filter((_, setIndex) => setIndex !== index) }
+      ? { ...current, exercises: current.exercises.filter((_, exerciseIndex) => exerciseIndex !== index) }
       : current);
+  };
+
+  const changeWeightUnit = async (nextUnit: "kg" | "lb") => {
+    if (nextUnit === weightUnit || updatingWeightUnit) return;
+    setUpdatingWeightUnit(true);
+    setWeightUnitError("");
+    try {
+      await onWeightUnitChange(nextUnit);
+      const conversion = weightUnit === "kg" ? 1 / KG_PER_LB : KG_PER_LB;
+      setDraft((current) => current
+        ? {
+            ...current,
+            exercises: current.exercises.map((exercise) => ({
+              ...exercise,
+              weight: exercise.weight === ""
+                ? ""
+                : String(Number((Number(exercise.weight) * conversion).toFixed(2))),
+            })),
+          }
+        : current);
+    } catch (error) {
+      setWeightUnitError(errorMessage(error, "Your weight unit couldn't be updated."));
+    } finally {
+      setUpdatingWeightUnit(false);
+    }
   };
 
   const buildInput = (): WorkoutInput | null => {
@@ -204,26 +259,40 @@ export default function Workouts({ getToken, weightUnit, distanceUnit }: Props) 
       return null;
     }
     if (draft.activity_type === "strength") {
-      if (!draft.sets.length) {
-        setFormError("Add at least one set to this strength session.");
+      if (!draft.exercises.length) {
+        setFormError("Add at least one exercise to this strength session.");
         return null;
       }
-      const sets = [];
-      for (let index = 0; index < draft.sets.length; index += 1) {
-        const set = draft.sets[index];
-        const exercise_name = set.exercise_name.trim();
-        const weight = Number(set.weight);
-        const reps = Number(set.reps);
-        if (!exercise_name || set.weight === "" || set.reps === "" || !Number.isFinite(weight) || weight < 0 || !Number.isInteger(reps) || reps <= 0) {
-          setFormError(`Check exercise, weight and reps for set ${index + 1}.`);
+      const sets: LiftingSet[] = [];
+      for (let index = 0; index < draft.exercises.length; index += 1) {
+        const exercise = draft.exercises[index];
+        const exercise_name = exercise.exercise_name.trim();
+        const weight = Number(exercise.weight);
+        const setCount = Number(exercise.set_count);
+        const reps = Number(exercise.reps);
+        if (
+          !exercise_name ||
+          exercise.weight === "" ||
+          !Number.isFinite(weight) ||
+          weight < 0 ||
+          !Number.isInteger(setCount) ||
+          setCount < 1 ||
+          setCount > 100 ||
+          exercise.reps === "" ||
+          !Number.isInteger(reps) ||
+          reps <= 0
+        ) {
+          setFormError(`Check exercise, sets, reps and weight for exercise ${index + 1}.`);
           return null;
         }
-        sets.push({
-          exercise_name,
-          set_number: index + 1,
-          weight_kg: Number((weight * (weightUnit === "lb" ? KG_PER_LB : 1)).toFixed(5)),
-          reps,
-        });
+        for (let setIndex = 0; setIndex < setCount; setIndex += 1) {
+          sets.push({
+            exercise_name,
+            set_number: sets.length + 1,
+            weight_kg: Number((weight * (weightUnit === "lb" ? KG_PER_LB : 1)).toFixed(5)),
+            reps,
+          });
+        }
       }
       return { title, activity_type: "strength", performed_on: draft.performed_on, notes: draft.notes.trim(), sets };
     }
@@ -296,9 +365,28 @@ export default function Workouts({ getToken, weightUnit, distanceUnit }: Props) 
           <h1 id="workouts-title">The work, <em>kept.</em></h1>
           <p>A clear record of the strength and miles you put in.</p>
         </div>
-        <button className="workouts-button workouts-button-primary" type="button" onClick={startNew}>
-          <span aria-hidden="true">+</span> Log a session
-        </button>
+        <div className="workouts-heading-actions">
+          <div className="weight-unit-control">
+            <span className="weight-unit-label">WEIGHT UNIT</span>
+            <div className="weight-unit-switch" role="group" aria-label="Weight unit">
+              {(["kg", "lb"] as const).map((unit) => (
+                <button
+                  key={unit}
+                  type="button"
+                  aria-pressed={weightUnit === unit}
+                  disabled={updatingWeightUnit}
+                  onClick={() => void changeWeightUnit(unit)}
+                >
+                  {unit}
+                </button>
+              ))}
+            </div>
+            {weightUnitError && <span className="weight-unit-error" role="alert">{weightUnitError}</span>}
+          </div>
+          <button className="workouts-button workouts-button-primary" type="button" onClick={startNew}>
+            <span aria-hidden="true">+</span> Log a session
+          </button>
+        </div>
       </header>
 
       <div className="workouts-layout">
@@ -414,26 +502,29 @@ export default function Workouts({ getToken, weightUnit, distanceUnit }: Props) 
               {draft.activity_type === "strength" ? (
                 <div className="workout-entry-section">
                   <div className="workout-entry-heading">
-                    <div><span className="workouts-overline">STRENGTH DETAILS</span><h3>Sets</h3></div>
-                    <button className="workouts-text-button" type="button" onClick={addSet}>+ Add set</button>
+                    <div><span className="workouts-overline">STRENGTH DETAILS</span><h3>Exercises</h3></div>
+                    <button className="workouts-text-button" type="button" onClick={addExercise}>+ Add exercise</button>
                   </div>
-                  <div className="set-table-head" aria-hidden="true">
-                    <span>EXERCISE</span><span>LOAD ({weightUnit})</span><span>REPS</span><span />
+                  <div className="exercise-table-head" aria-hidden="true">
+                    <span>EXERCISE</span><span>SETS</span><span>REPS</span><span>LOAD ({weightUnit})</span><span />
                   </div>
-                  <div className="set-rows">
-                    {draft.sets.map((set, index) => (
-                      <div className="set-row" key={`set-${index}`}>
+                  <div className="exercise-rows">
+                    {draft.exercises.map((exercise, index) => (
+                      <div className="exercise-row" key={`exercise-${index}`}>
                         <span className="set-row-number">{String(index + 1).padStart(2, "0")}</span>
-                        <label className="workout-sr-only" htmlFor={`exercise-${index}`}>Exercise for set {index + 1}</label>
-                        <input id={`exercise-${index}`} value={set.exercise_name} onChange={(event) => updateSet(index, "exercise_name", event.target.value)} placeholder="Exercise" maxLength={80} />
-                        <label className="workout-sr-only" htmlFor={`weight-${index}`}>Weight in {weightUnit} for set {index + 1}</label>
-                        <input id={`weight-${index}`} type="number" min="0" step="any" inputMode="decimal" value={set.weight} onChange={(event) => updateSet(index, "weight", event.target.value)} placeholder="0" />
-                        <label className="workout-sr-only" htmlFor={`reps-${index}`}>Reps for set {index + 1}</label>
-                        <input id={`reps-${index}`} type="number" min="1" step="1" inputMode="numeric" value={set.reps} onChange={(event) => updateSet(index, "reps", event.target.value)} placeholder="0" />
-                        <button className="set-remove" type="button" onClick={() => removeSet(index)} aria-label={`Remove set ${index + 1}`} disabled={draft.sets.length === 1}>×</button>
+                        <label className="workout-sr-only" htmlFor={`exercise-${index}`}>Exercise {index + 1}</label>
+                        <input id={`exercise-${index}`} value={exercise.exercise_name} onChange={(event) => updateExercise(index, "exercise_name", event.target.value)} placeholder="Exercise" maxLength={80} />
+                        <label className="workout-sr-only" htmlFor={`sets-${index}`}>Number of sets for exercise {index + 1}</label>
+                        <input id={`sets-${index}`} type="number" min="1" max="100" step="1" inputMode="numeric" value={exercise.set_count} onChange={(event) => updateExercise(index, "set_count", event.target.value)} placeholder="3" />
+                        <label className="workout-sr-only" htmlFor={`reps-${index}`}>Reps per set for exercise {index + 1}</label>
+                        <input id={`reps-${index}`} type="number" min="1" step="1" inputMode="numeric" value={exercise.reps} onChange={(event) => updateExercise(index, "reps", event.target.value)} placeholder="5" />
+                        <label className="workout-sr-only" htmlFor={`weight-${index}`}>Weight in {weightUnit} for exercise {index + 1}</label>
+                        <input id={`weight-${index}`} type="number" min="0" step="any" inputMode="decimal" value={exercise.weight} onChange={(event) => updateExercise(index, "weight", event.target.value)} placeholder="0" />
+                        <button className="set-remove" type="button" onClick={() => removeExercise(index)} aria-label={`Remove exercise ${index + 1}`} disabled={draft.exercises.length === 1}>×</button>
                       </div>
                     ))}
                   </div>
+                  <p className="workout-hint">Log sets × reps at one load, for example 3 sets × 5 reps at 275 {weightUnit}.</p>
                 </div>
               ) : (
                 <div className="workout-entry-section">
@@ -491,12 +582,12 @@ export default function Workouts({ getToken, weightUnit, distanceUnit }: Props) 
                   <div className="detail-section-heading"><span>EXERCISE LOG</span><span>{activeDetail.sets.length} {activeDetail.sets.length === 1 ? "set" : "sets"}</span></div>
                   {activeDetail.sets.length ? (
                     <div className="detail-sets">
-                      {activeDetail.sets.map((set, index) => (
-                        <div className="detail-set" key={set.id ?? `${set.exercise_name}-${index}`}>
-                          <span className="detail-set-index">{String(set.set_number).padStart(2, "0")}</span>
-                          <strong>{set.exercise_name}</strong>
-                          <span>{Number((set.weight_kg * (weightUnit === "lb" ? 1 / KG_PER_LB : 1)).toFixed(2))} <i>{weightUnit}</i></span>
-                          <span>{set.reps} <i>reps</i></span>
+                      {exerciseDraftsFromSets(activeDetail.sets, weightUnit).map((exercise, index) => (
+                        <div className="detail-set" key={`${exercise.exercise_name}-${index}`}>
+                          <span className="detail-set-index">{String(index + 1).padStart(2, "0")}</span>
+                          <strong>{exercise.exercise_name}</strong>
+                          <span>{exercise.set_count} sets × {exercise.reps} reps</span>
+                          <span>{exercise.weight} <i>{weightUnit}</i></span>
                         </div>
                       ))}
                     </div>

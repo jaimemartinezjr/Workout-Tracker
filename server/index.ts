@@ -71,6 +71,43 @@ app.get("/api/me", async (request, response) => {
   }
 });
 
+app.patch("/api/me/preferences", async (request, response) => {
+  const { isAuthenticated, userId } = getAuth(request);
+
+  if (!isAuthenticated || !userId) {
+    response.status(401).json({ error: "Sign in to update your preferences." });
+    return;
+  }
+
+  const weightUnit = request.body?.weight_unit;
+  if (weightUnit !== "kg" && weightUnit !== "lb") {
+    response.status(400).json({ error: "Choose kg or lb for your weight unit." });
+    return;
+  }
+
+  try {
+    const result = await pool.query(
+      `UPDATE users
+       SET weight_unit = $1
+       WHERE id = $2
+       RETURNING id, email, weight_unit, distance_unit, created_at`,
+      [weightUnit, userId],
+    );
+
+    if (!result.rows[0]) {
+      response.status(404).json({ error: "Your account profile could not be found." });
+      return;
+    }
+
+    response.json({ user: result.rows[0] });
+  } catch (error) {
+    console.error("Could not update the signed-in user's weight unit.", error);
+    response.status(500).json({
+      error: "We couldn't update your weight unit right now. Please try again.",
+    });
+  }
+});
+
 app.use(
   "/api/workouts",
   createWorkoutsRouter(pool, (request) => {

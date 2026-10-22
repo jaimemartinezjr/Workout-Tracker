@@ -21,6 +21,26 @@ function App() {
   const [account, setAccount] = useState<Account | null>(null);
   const [accountError, setAccountError] = useState("");
 
+  const updateWeightUnit = async (weightUnit: Account["weight_unit"]) => {
+    const token = await getToken();
+    const response = await fetch("/api/me/preferences", {
+      method: "PATCH",
+      headers: {
+        "Content-Type": "application/json",
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+      body: JSON.stringify({ weight_unit: weightUnit }),
+    });
+    const payload = (await response.json()) as {
+      user?: Account;
+      error?: string;
+    };
+    if (!response.ok || !payload.user) {
+      throw new Error(payload.error ?? "Your weight unit couldn't be updated.");
+    }
+    setAccount(payload.user);
+  };
+
   useEffect(() => {
     let isCurrent = true;
 
@@ -157,6 +177,7 @@ function App() {
               getToken={getToken}
               weightUnit={account.weight_unit}
               distanceUnit={account.distance_unit}
+              onWeightUnitChange={updateWeightUnit}
             />
           ) : (
             <div className="loading-state" aria-live="polite">
