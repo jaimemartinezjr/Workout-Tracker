@@ -21,6 +21,7 @@ type Props = {
 };
 
 type ExerciseDraft = {
+  id: string;
   exercise_name: string;
   weight: string;
   set_count: string;
@@ -40,6 +41,16 @@ type WorkoutDraft = {
 
 const KG_PER_LB = 0.45359237;
 const KM_PER_MI = 1.609344;
+let nextExerciseDraftId = 0;
+
+function createExerciseDraft(exercise: Omit<ExerciseDraft, "id">): ExerciseDraft {
+  nextExerciseDraftId += 1;
+  return { ...exercise, id: String(nextExerciseDraftId) };
+}
+
+function exerciseErrorKey(field: "exercise" | "sets" | "reps" | "weight", exerciseId: string) {
+  return `${field}-${exerciseId}`;
+}
 
 function todayValue() {
   const now = new Date();
@@ -52,7 +63,7 @@ function newDraft(activity: ActivityType = "strength"): WorkoutDraft {
     activity_type: activity,
     performed_on: todayValue(),
     notes: "",
-    exercises: [{ exercise_name: "", weight: "", set_count: "3", reps: "" }],
+    exercises: [createExerciseDraft({ exercise_name: "", weight: "", set_count: "3", reps: "" })],
     distance: "",
     pace: "",
     calories: "",
@@ -76,12 +87,12 @@ function exerciseDraftsFromSets(sets: LiftingSet[], weightUnit: "kg" | "lb") {
     ) {
       previous.set_count = String(Number(previous.set_count) + 1);
     } else {
-      exercises.push({
+      exercises.push(createExerciseDraft({
         exercise_name: set.exercise_name,
         weight,
         set_count: "1",
         reps,
-      });
+      }));
     }
   }
 
@@ -99,7 +110,7 @@ function draftFromDetail(detail: WorkoutDetail, weightUnit: "kg" | "lb", distanc
     notes: detail.workout.notes ?? "",
     exercises: exercises.length
       ? exercises
-      : [{ exercise_name: "", weight: "", set_count: "1", reps: "" }],
+      : [createExerciseDraft({ exercise_name: "", weight: "", set_count: "1", reps: "" })],
     distance: run ? String(Number((run.distance_km * distanceMultiplier).toFixed(2))) : "",
     pace: run
       ? String(Number(((run.pace_seconds_per_km * (distanceUnit === "mi" ? KM_PER_MI : 1)) / 60).toFixed(2)))
@@ -151,6 +162,9 @@ export default function Workouts({
   const [updatingDistanceUnit, setUpdatingDistanceUnit] = useState(false);
 
   const clearFieldError = (fieldId: string) => {
+    if (fieldErrors[fieldId] && !Object.keys(fieldErrors).some((key) => key !== fieldId)) {
+      setFormError("");
+    }
     setFieldErrors((current) => {
       if (!current[fieldId]) return current;
       const next = { ...current };
@@ -240,39 +254,45 @@ export default function Workouts({
       calories: "calories",
     };
     if (fieldId[key]) clearFieldError(fieldId[key]!);
-    setFormError("");
     setFormMessage("");
   };
 
-  const updateExercise = (index: number, key: keyof ExerciseDraft, value: string) => {
+  const updateExercise = (index: number, key: keyof Omit<ExerciseDraft, "id">, value: string) => {
     setDraft((current) => current
       ? { ...current, exercises: current.exercises.map((exercise, exerciseIndex) => exerciseIndex === index ? { ...exercise, [key]: value } : exercise) }
       : current);
-    const fieldId = {
-      exercise_name: `exercise-${index}`,
-      set_count: `sets-${index}`,
-      reps: `reps-${index}`,
-      weight: `weight-${index}`,
-    }[key];
+    const exerciseId = draft?.exercises[index]?.id;
+    if (!exerciseId) return;
+    const fieldId = exerciseErrorKey(({
+      exercise_name: "exercise",
+      set_count: "sets",
+      reps: "reps",
+      weight: "weight",
+    } as const)[key], exerciseId);
     clearFieldError(fieldId);
-    setFormError("");
   };
 
   const addExercise = () => {
     setDraft((current) => current
-      ? { ...current, exercises: [...current.exercises, { exercise_name: "", weight: "", set_count: "3", reps: "" }] }
+      ? { ...current, exercises: [...current.exercises, createExerciseDraft({ exercise_name: "", weight: "", set_count: "3", reps: "" })] }
       : current);
-    setFormError("");
   };
 
   const removeExercise = (index: number) => {
+    const removedExerciseId = draft?.exercises[index]?.id;
     setDraft((current) => current
       ? { ...current, exercises: current.exercises.filter((_, exerciseIndex) => exerciseIndex !== index) }
       : current);
-    setFieldErrors((current) => Object.fromEntries(
-      Object.entries(current).filter(([fieldId]) => !/^(exercise|sets|reps|weight)-\d+$/.test(fieldId)),
-    ));
-    setFormError("");
+    if (removedExerciseId) {
+      const remainingErrors = Object.fromEntries(
+        Object.entries(fieldErrors).filter(([fieldId]) =>
+          !(["exercise", "sets", "reps", "weight"] as const)
+            .some((field) => fieldId === exerciseErrorKey(field, removedExerciseId)),
+        ),
+      );
+      setFieldErrors(remainingErrors);
+      if (!Object.keys(remainingErrors).length) setFormError("");
+    }
   };
 
   const changeWeightUnit = async (nextUnit: "kg" | "lb") => {
@@ -347,19 +367,19 @@ export default function Workouts({
         const reps = Number(exercise.reps);
         let exerciseIsValid = true;
         if (!exercise_name) {
-          errors[`exercise-${index}`] = "Enter an exercise name.";
+          errors[exerciseErrorKey("exercise", exercise.id)] = "Enter an exercise name.";
           exerciseIsValid = false;
         }
         if (!Number.isInteger(setCount) || setCount < 1 || setCount > 100) {
-          errors[`sets-${index}`] = "Enter a whole number from 1 to 100.";
+          errors[exerciseErrorKey("sets", exercise.id)] = "Enter a whole number from 1 to 100.";
           exerciseIsValid = false;
         }
         if (!Number.isInteger(reps) || reps < 1) {
-          errors[`reps-${index}`] = "Enter a whole number of reps greater than zero.";
+          errors[exerciseErrorKey("reps", exercise.id)] = "Enter a whole number of reps greater than zero.";
           exerciseIsValid = false;
         }
         if (exercise.weight === "" || !Number.isFinite(weight) || weight < 0) {
-          errors[`weight-${index}`] = `Enter a weight of 0 or more ${weightUnit}.`;
+          errors[exerciseErrorKey("weight", exercise.id)] = `Enter a weight of 0 or more ${weightUnit}.`;
           exerciseIsValid = false;
         }
         if (!exerciseIsValid) continue;
@@ -639,25 +659,25 @@ export default function Workouts({
                   </div>
                   <div className="exercise-rows">
                     {draft.exercises.map((exercise, index) => (
-                      <div className="exercise-row" key={`exercise-${index}`}>
+                      <div className="exercise-row" key={exercise.id}>
                         <span className="set-row-number">{String(index + 1).padStart(2, "0")}</span>
                         <label className="exercise-field exercise-name">
                           <span className="exercise-field-label">EXERCISE</span>
                           <input
-                            id={`exercise-${index}`}
+                            id={`exercise-${exercise.id}`}
                             value={exercise.exercise_name}
                             onChange={(event) => updateExercise(index, "exercise_name", event.target.value)}
                             placeholder="e.g. Bench press"
                             maxLength={80}
-                            aria-invalid={Boolean(fieldErrors[`exercise-${index}`])}
-                            aria-describedby={fieldErrors[`exercise-${index}`] ? `exercise-${index}-error` : undefined}
+                            aria-invalid={Boolean(fieldErrors[exerciseErrorKey("exercise", exercise.id)])}
+                            aria-describedby={fieldErrors[exerciseErrorKey("exercise", exercise.id)] ? `exercise-${exercise.id}-error` : undefined}
                           />
-                          {fieldErrors[`exercise-${index}`] && <span className="exercise-field-error" id={`exercise-${index}-error`}>{fieldErrors[`exercise-${index}`]}</span>}
+                          {fieldErrors[exerciseErrorKey("exercise", exercise.id)] && <span className="exercise-field-error" id={`exercise-${exercise.id}-error`}>{fieldErrors[exerciseErrorKey("exercise", exercise.id)]}</span>}
                         </label>
                         <label className="exercise-field exercise-sets">
                           <span className="exercise-field-label">SETS</span>
                           <input
-                            id={`sets-${index}`}
+                            id={`sets-${exercise.id}`}
                             type="number"
                             min="1"
                             max="100"
@@ -667,15 +687,15 @@ export default function Workouts({
                             onChange={(event) => updateExercise(index, "set_count", event.target.value)}
                             placeholder="3"
                             aria-label={`Number of sets for exercise ${index + 1}`}
-                            aria-invalid={Boolean(fieldErrors[`sets-${index}`])}
-                            aria-describedby={fieldErrors[`sets-${index}`] ? `sets-${index}-error` : undefined}
+                            aria-invalid={Boolean(fieldErrors[exerciseErrorKey("sets", exercise.id)])}
+                            aria-describedby={fieldErrors[exerciseErrorKey("sets", exercise.id)] ? `sets-${exercise.id}-error` : undefined}
                           />
-                          {fieldErrors[`sets-${index}`] && <span className="exercise-field-error" id={`sets-${index}-error`}>{fieldErrors[`sets-${index}`]}</span>}
+                          {fieldErrors[exerciseErrorKey("sets", exercise.id)] && <span className="exercise-field-error" id={`sets-${exercise.id}-error`}>{fieldErrors[exerciseErrorKey("sets", exercise.id)]}</span>}
                         </label>
                         <label className="exercise-field exercise-reps">
                           <span className="exercise-field-label">REPS</span>
                           <input
-                            id={`reps-${index}`}
+                            id={`reps-${exercise.id}`}
                             type="number"
                             min="1"
                             step="1"
@@ -684,15 +704,15 @@ export default function Workouts({
                             onChange={(event) => updateExercise(index, "reps", event.target.value)}
                             placeholder="5"
                             aria-label={`Reps per set for exercise ${index + 1}`}
-                            aria-invalid={Boolean(fieldErrors[`reps-${index}`])}
-                            aria-describedby={fieldErrors[`reps-${index}`] ? `reps-${index}-error` : undefined}
+                            aria-invalid={Boolean(fieldErrors[exerciseErrorKey("reps", exercise.id)])}
+                            aria-describedby={fieldErrors[exerciseErrorKey("reps", exercise.id)] ? `reps-${exercise.id}-error` : undefined}
                           />
-                          {fieldErrors[`reps-${index}`] && <span className="exercise-field-error" id={`reps-${index}-error`}>{fieldErrors[`reps-${index}`]}</span>}
+                          {fieldErrors[exerciseErrorKey("reps", exercise.id)] && <span className="exercise-field-error" id={`reps-${exercise.id}-error`}>{fieldErrors[exerciseErrorKey("reps", exercise.id)]}</span>}
                         </label>
                         <label className="exercise-field exercise-load">
                           <span className="exercise-field-label">LOAD ({weightUnit})</span>
                           <input
-                            id={`weight-${index}`}
+                            id={`weight-${exercise.id}`}
                             type="number"
                             min="0"
                             step="any"
@@ -701,10 +721,10 @@ export default function Workouts({
                             onChange={(event) => updateExercise(index, "weight", event.target.value)}
                             placeholder="0"
                             aria-label={`Weight in ${weightUnit} for exercise ${index + 1}`}
-                            aria-invalid={Boolean(fieldErrors[`weight-${index}`])}
-                            aria-describedby={fieldErrors[`weight-${index}`] ? `weight-${index}-error` : undefined}
+                            aria-invalid={Boolean(fieldErrors[exerciseErrorKey("weight", exercise.id)])}
+                            aria-describedby={fieldErrors[exerciseErrorKey("weight", exercise.id)] ? `weight-${exercise.id}-error` : undefined}
                           />
-                          {fieldErrors[`weight-${index}`] && <span className="exercise-field-error" id={`weight-${index}-error`}>{fieldErrors[`weight-${index}`]}</span>}
+                          {fieldErrors[exerciseErrorKey("weight", exercise.id)] && <span className="exercise-field-error" id={`weight-${exercise.id}-error`}>{fieldErrors[exerciseErrorKey("weight", exercise.id)]}</span>}
                         </label>
                         <button className="set-remove" type="button" onClick={() => removeExercise(index)} aria-label={`Remove exercise ${index + 1}`} disabled={draft.exercises.length === 1}>×</button>
                       </div>

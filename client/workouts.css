@@ -246,7 +246,7 @@
 .workout-field input::placeholder, .workout-field textarea::placeholder, .exercise-row input::placeholder { color: #67746a; }
 .workout-field input[type="date"] { color-scheme: dark; }
 .workout-field input[aria-invalid="true"], .exercise-field input[aria-invalid="true"] { border-color: #e79284; box-shadow: 0 0 0 1px rgb(231 146 132 / 26%); }
-.workout-field-error, .exercise-field-error { display: block; color: #f2a79b; font-size: 10px; font-weight: 400; line-height: 1.4; }
+.workout-field-error, .exercise-field-error { display: block; max-width: 100%; color: #f2a79b; font-size: 10px; font-weight: 400; line-height: 1.4; overflow-wrap: anywhere; }
 .workout-entry-section { margin: 24px 0 18px; }
 .workout-entry-heading { display: flex; align-items: end; justify-content: space-between; gap: 12px; margin-bottom: 13px; }
 .workout-entry-heading h3 { margin: 4px 0 0; font: 500 16px "Space Grotesk", sans-serif; }
@@ -309,6 +309,7 @@
   .exercise-load { grid-area: load; }
   .exercise-field-label { display: block; margin-bottom: 5px; color: #87948a; font: 9px "DM Mono", monospace; letter-spacing: .06em; white-space: nowrap; }
   .exercise-field input { height: 39px; padding: 0 7px; font-size: 13px !important; font-variant-numeric: tabular-nums; }
+  .workout-field-error, .exercise-field-error { font-size: 11px; line-height: 1.45; }
   .set-remove { position: absolute; top: 7px; right: 7px; }
   .detail-set { grid-template-columns: 24px minmax(0, 1fr) auto auto; gap: 6px; font-size: 11px; }
   .run-summary { gap: 6px; }
