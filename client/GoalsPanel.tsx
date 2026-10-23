@@ -6,6 +6,12 @@ import {
   type Goal,
   type GoalInput,
 } from "./goalsApi";
+import {
+  formatPaceInput,
+  paceFromSecondsPerKm,
+  paceToSecondsPerKm,
+  parsePaceInput,
+} from "./pace";
 import "./goals.css";
 
 type Props = {
@@ -55,7 +61,7 @@ function draftFromGoal(
       : String(Number((goal.target_distance_km * (distanceUnit === "mi" ? 1 / KM_PER_MI : 1)).toFixed(2))),
     target_pace: goal.target_pace_seconds_per_km == null
       ? ""
-      : String(Number(((goal.target_pace_seconds_per_km * (distanceUnit === "mi" ? KM_PER_MI : 1)) / 60).toFixed(2))),
+      : formatPaceInput(paceFromSecondsPerKm(goal.target_pace_seconds_per_km, distanceUnit)),
   };
 }
 
@@ -64,8 +70,7 @@ function displayNumber(value: number, decimals = 2) {
 }
 
 function formatPace(secondsPerKm: number, distanceUnit: Props["distanceUnit"]) {
-  const totalSeconds = Math.round(secondsPerKm * (distanceUnit === "mi" ? KM_PER_MI : 1));
-  return `${Math.floor(totalSeconds / 60)}:${String(totalSeconds % 60).padStart(2, "0")} / ${distanceUnit}`;
+  return `${formatPaceInput(paceFromSecondsPerKm(secondsPerKm, distanceUnit))} / ${distanceUnit}`;
 }
 
 function getErrorMessage(error: unknown, fallback: string) {
@@ -168,18 +173,18 @@ export default function GoalsPanel({ getToken, weightUnit, distanceUnit }: Props
       }
     } else {
       const distance = Number(draft.target_distance);
-      const pace = Number(draft.target_pace);
+      const paceSeconds = parsePaceInput(draft.target_pace);
       if (draft.target_distance === "" || !Number.isFinite(distance) || distance <= 0) {
         errors["goal-distance"] = `Enter a target distance greater than zero ${distanceUnit}.`;
       }
-      if (draft.target_pace === "" || !Number.isFinite(pace) || pace <= 0) {
-        errors["goal-pace"] = `Enter a target pace greater than zero in minutes per ${distanceUnit}.`;
+      if (paceSeconds === null) {
+        errors["goal-pace"] = "Enter pace as min:sec (for example, 8:30) with seconds from 00 to 59.";
       }
       if (!Object.keys(errors).length) {
         input = {
           goal_type: "run",
           target_distance_km: Number((distance * (distanceUnit === "mi" ? KM_PER_MI : 1)).toFixed(5)),
-          target_pace_seconds_per_km: Math.round((pace * 60) / (distanceUnit === "mi" ? KM_PER_MI : 1)),
+          target_pace_seconds_per_km: paceToSecondsPerKm(paceSeconds!, distanceUnit),
         };
       }
     }
@@ -339,19 +344,22 @@ export default function GoalsPanel({ getToken, weightUnit, distanceUnit }: Props
                 {fieldErrors["goal-distance"] && <span className="goal-field-error" id="goal-distance-error">{fieldErrors["goal-distance"]}</span>}
               </label>
               <label className="goal-field">
-                <span className="workout-field-label">Target pace <i>min / {distanceUnit}</i></span>
+                <span className="workout-field-label">Target pace <i>min:sec / {distanceUnit}</i></span>
                 <input
                   id="goal-pace"
-                  type="number"
-                  min="0"
-                  step="any"
-                  inputMode="decimal"
+                  type="text"
+                  inputMode="text"
+                  autoComplete="off"
                   value={draft.target_pace}
                   onChange={(event) => updateField("target_pace", event.target.value, "goal-pace")}
-                  placeholder="5.5"
+                  placeholder="8:30"
                   aria-invalid={Boolean(fieldErrors["goal-pace"])}
-                  aria-describedby={fieldErrors["goal-pace"] ? "goal-pace-error" : undefined}
+                  aria-describedby={[
+                    "goal-pace-hint",
+                    fieldErrors["goal-pace"] ? "goal-pace-error" : "",
+                  ].filter(Boolean).join(" ")}
                 />
+                <span className="goal-field-hint" id="goal-pace-hint">Use minutes:seconds, such as 8:30.</span>
                 {fieldErrors["goal-pace"] && <span className="goal-field-error" id="goal-pace-error">{fieldErrors["goal-pace"]}</span>}
               </label>
             </div>

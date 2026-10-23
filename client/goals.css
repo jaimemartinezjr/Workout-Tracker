@@ -95,6 +95,7 @@
   border-color: #e79284;
   box-shadow: 0 0 0 1px rgb(231 146 132 / 26%);
 }
+.goal-field-hint { color: var(--w-muted); font-size: 10px; line-height: 1.4; }
 .goal-field-error { color: #f2a79b; font-size: 10px; line-height: 1.4; }
 .goals-form-actions { display: flex; justify-content: flex-end; gap: 9px; margin-top: 18px; padding-top: 15px; border-top: 1px solid var(--w-line); }
 @media (max-width: 640px) {
