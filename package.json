@@ -7,6 +7,7 @@
     "dev": "concurrently -k \"tsx server/index.ts\" \"vite --host 0.0.0.0\"",
     "build": "tsc --noEmit -p tsconfig.app.json && tsc --noEmit -p tsconfig.server.json && vite build",
     "test:data-isolation": "tsx --test server/workouts.test.ts",
+    "test:workouts-responsive": "tsx --test tests/workouts-responsive.test.ts",
     "start": "tsx server/index.ts"
   },
   "dependencies": {
@@ -19,6 +20,7 @@
     "react-dom": "^19.3.1"
   },
   "devDependencies": {
+    "@playwright/test": "^1.64.1",
     "@types/express": "^4.17.23",
     "@types/node": "^24.0.0",
     "@types/pg": "^8.15.5",
