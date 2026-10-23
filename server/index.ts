@@ -4,6 +4,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { clerkClient, clerkMiddleware, getAuth } from "@clerk/express";
 import { initializeDatabase, pool } from "./db.js";
+import { createWorkoutsRouter } from "./workouts.js";
 
 const requiredEnvironment = [
   "CLERK_PUBLISHABLE_KEY",
@@ -69,6 +70,71 @@ app.get("/api/me", async (request, response) => {
     });
   }
 });
+
+app.patch("/api/me/preferences", async (request, response) => {
+  const { isAuthenticated, userId } = getAuth(request);
+
+  if (!isAuthenticated || !userId) {
+    response.status(401).json({ error: "Sign in to update your preferences." });
+    return;
+  }
+
+  const preferences = request.body ?? {};
+  const hasWeightUnit = Object.prototype.hasOwnProperty.call(
+    preferences,
+    "weight_unit",
+  );
+  const hasDistanceUnit = Object.prototype.hasOwnProperty.call(
+    preferences,
+    "distance_unit",
+  );
+  const weightUnit = preferences.weight_unit;
+  const distanceUnit = preferences.distance_unit;
+
+  if (!hasWeightUnit && !hasDistanceUnit) {
+    response.status(400).json({ error: "Choose a unit preference to update." });
+    return;
+  }
+  if (hasWeightUnit && weightUnit !== "kg" && weightUnit !== "lb") {
+    response.status(400).json({ error: "Choose kg or lb for your weight unit." });
+    return;
+  }
+  if (hasDistanceUnit && distanceUnit !== "km" && distanceUnit !== "mi") {
+    response.status(400).json({ error: "Choose km or mi for your distance unit." });
+    return;
+  }
+
+  try {
+    const result = await pool.query(
+      `UPDATE users
+       SET weight_unit = COALESCE($1, weight_unit),
+           distance_unit = COALESCE($2, distance_unit)
+       WHERE id = $3
+       RETURNING id, email, weight_unit, distance_unit, created_at`,
+      [hasWeightUnit ? weightUnit : null, hasDistanceUnit ? distanceUnit : null, userId],
+    );
+
+    if (!result.rows[0]) {
+      response.status(404).json({ error: "Your account profile could not be found." });
+      return;
+    }
+
+    response.json({ user: result.rows[0] });
+  } catch (error) {
+    console.error("Could not update the signed-in user's unit preferences.", error);
+    response.status(500).json({
+      error: "We couldn't update your unit preferences right now. Please try again.",
+    });
+  }
+});
+
+app.use(
+  "/api/workouts",
+  createWorkoutsRouter(pool, (request) => {
+    const { isAuthenticated, userId } = getAuth(request);
+    return isAuthenticated ? userId : null;
+  }),
+);
 
 app.get("/api/health", (_request, response) => {
   response.json({ status: "ok" });

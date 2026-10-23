@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "concurrently -k \"tsx server/index.ts\" \"vite --host 0.0.0.0\"",
     "build": "tsc --noEmit -p tsconfig.app.json && tsc --noEmit -p tsconfig.server.json && vite build",
+    "test:data-isolation": "tsx --test server/workouts.test.ts",
     "start": "tsx server/index.ts"
   },
   "dependencies": {
