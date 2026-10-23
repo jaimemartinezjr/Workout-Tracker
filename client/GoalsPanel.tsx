@@ -178,7 +178,7 @@ export default function GoalsPanel({ getToken, weightUnit, distanceUnit }: Props
         errors["goal-distance"] = `Enter a target distance greater than zero ${distanceUnit}.`;
       }
       if (paceSeconds === null) {
-        errors["goal-pace"] = "Enter pace as min:sec (for example, 8:30) with seconds from 00 to 59.";
+        errors["goal-pace"] = "Enter whole minutes or min:sec (for example, 9 or 8:30); seconds must be from 00 to 59.";
       }
       if (!Object.keys(errors).length) {
         input = {

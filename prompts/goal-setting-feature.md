@@ -8,3 +8,6 @@ Build this feature on the `9-goal-setting-feature` branch. Support multiple goal
 
 ## Follow-up prompt: run pace entry
 Update run-goal pace entry to use `min:sec` rather than decimal minutes (for example, accept `8:30` directly). Validate seconds from `00` to `59`, show a helpful format hint, and keep stored pace in canonical seconds per kilometer while preserving the user's selected km/mi unit behavior when creating and editing goals.
+
+## Follow-up prompt: pace shorthand and precision
+Treat an entry containing only whole minutes (such as `9`) as `9:00`. Preserve exact displayed min:sec goals when converting between miles and kilometers by storing sufficient fractional precision for canonical seconds per kilometer, and validate that production schema migrations are applied before starting code that depends on them.

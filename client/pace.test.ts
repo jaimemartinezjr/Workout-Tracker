@@ -8,6 +8,8 @@ import {
 } from "./pace.js";
 
 test("parses minute:second pace values", () => {
+  assert.equal(parsePaceInput("8"), 480);
+  assert.equal(parsePaceInput("9"), 540);
   assert.equal(parsePaceInput("8:30"), 510);
   assert.equal(parsePaceInput("  0:45 "), 45);
   assert.equal(parsePaceInput("12:00"), 720);
@@ -27,8 +29,11 @@ test("formats pace seconds with two-digit seconds", () => {
 
 test("converts mile pace to canonical per-kilometer pace and back", () => {
   const canonicalPace = paceToSecondsPerKm(510, "mi");
-  assert.equal(canonicalPace, 317);
-  assert.equal(paceFromSecondsPerKm(canonicalPace, "mi"), 510);
+  assert.ok(Math.abs(canonicalPace * 1.609344 - 510) < 0.001);
+  assert.equal(formatPaceInput(paceFromSecondsPerKm(canonicalPace, "mi")), "8:30");
+
+  const nineMinuteMile = paceToSecondsPerKm(540, "mi");
+  assert.equal(formatPaceInput(paceFromSecondsPerKm(nineMinuteMile, "mi")), "9:00");
   assert.equal(paceToSecondsPerKm(510, "km"), 510);
   assert.equal(paceFromSecondsPerKm(510, "km"), 510);
 });

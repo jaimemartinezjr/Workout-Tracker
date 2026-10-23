@@ -180,16 +180,21 @@ test("a goal can be created, updated, and deleted by its owner", async () => {
         body: JSON.stringify({
           goal_type: "run",
           target_distance_km: 10,
-          target_pace_seconds_per_km: 330,
+          target_pace_seconds_per_km: 335.5391,
         }),
       },
     );
     assert.equal(updatedResponse.status, 200);
     const updated = (await updatedResponse.json()) as {
-      goal: { goal_type: string; target_distance_km: number };
+      goal: {
+        goal_type: string;
+        target_distance_km: number;
+        target_pace_seconds_per_km: number;
+      };
     };
     assert.equal(updated.goal.goal_type, "run");
     assert.equal(updated.goal.target_distance_km, 10);
+    assert.equal(updated.goal.target_pace_seconds_per_km, 335.5391);
 
     const deletedResponse = await fetch(
       `${baseUrl}/api/goals/${created.goal.id}`,

@@ -81,13 +81,14 @@ function validateGoal(body: unknown): ValidationResult {
       return { ok: false, error: "Enter a target distance greater than zero." };
     }
     if (
-      !Number.isInteger(input.target_pace_seconds_per_km) ||
+      typeof input.target_pace_seconds_per_km !== "number" ||
+      !Number.isFinite(input.target_pace_seconds_per_km) ||
       Number(input.target_pace_seconds_per_km) < 1 ||
       Number(input.target_pace_seconds_per_km) > 360000
     ) {
       return {
         ok: false,
-        error: "Enter a whole-number target pace greater than zero.",
+        error: "Enter a target pace greater than zero.",
       };
     }
     return {

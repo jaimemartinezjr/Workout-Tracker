@@ -6,7 +6,7 @@ CREATE TABLE IF NOT EXISTS public.goals (
   target_weight_kg NUMERIC(8, 3),
   target_reps INTEGER,
   target_distance_km NUMERIC(8, 3),
-  target_pace_seconds_per_km INTEGER,
+  target_pace_seconds_per_km NUMERIC(10, 4),
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   CHECK (
