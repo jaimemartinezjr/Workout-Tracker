@@ -13,6 +13,7 @@ export async function initializeDatabase() {
     await pool.query("SELECT 1 FROM public.workouts LIMIT 0");
     await pool.query("SELECT 1 FROM public.lifting_sets LIMIT 0");
     await pool.query("SELECT 1 FROM public.run_details LIMIT 0");
+    await pool.query("SELECT 1 FROM public.goals LIMIT 0");
     return;
   }
 
@@ -32,4 +33,9 @@ export async function initializeDatabase() {
     "utf8",
   );
   await pool.query(workoutSchema);
+  const goalSchema = await readFile(
+    new URL("./migrations/003_goals.sql", import.meta.url),
+    "utf8",
+  );
+  await pool.query(goalSchema);
 }
