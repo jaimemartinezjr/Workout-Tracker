@@ -21,7 +21,9 @@ function App() {
   const [account, setAccount] = useState<Account | null>(null);
   const [accountError, setAccountError] = useState("");
 
-  const updateWeightUnit = async (weightUnit: Account["weight_unit"]) => {
+  const updatePreferences = async (
+    preferences: Partial<Pick<Account, "weight_unit" | "distance_unit">>,
+  ) => {
     const token = await getToken();
     const response = await fetch("/api/me/preferences", {
       method: "PATCH",
@@ -29,7 +31,7 @@ function App() {
         "Content-Type": "application/json",
         ...(token ? { Authorization: `Bearer ${token}` } : {}),
       },
-      body: JSON.stringify({ weight_unit: weightUnit }),
+      body: JSON.stringify(preferences),
     });
     const payload = (await response.json()) as {
       user?: Account;
@@ -38,7 +40,9 @@ function App() {
     if (!response.ok || !payload.user) {
       throw new Error(payload.error ?? "Your weight unit couldn't be updated.");
     }
-    setAccount(payload.user);
+    setAccount((current) =>
+      current ? { ...current, ...preferences } : payload.user!,
+    );
   };
 
   useEffect(() => {
@@ -177,7 +181,12 @@ function App() {
               getToken={getToken}
               weightUnit={account.weight_unit}
               distanceUnit={account.distance_unit}
-              onWeightUnitChange={updateWeightUnit}
+              onWeightUnitChange={(weightUnit) =>
+                updatePreferences({ weight_unit: weightUnit })
+              }
+              onDistanceUnitChange={(distanceUnit) =>
+                updatePreferences({ distance_unit: distanceUnit })
+              }
             />
           ) : (
             <div className="loading-state" aria-live="polite">

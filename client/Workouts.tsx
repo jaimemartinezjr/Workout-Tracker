@@ -17,6 +17,7 @@ type Props = {
   weightUnit: "kg" | "lb";
   distanceUnit: "km" | "mi";
   onWeightUnitChange: (weightUnit: "kg" | "lb") => Promise<void>;
+  onDistanceUnitChange: (distanceUnit: "km" | "mi") => Promise<void>;
 };
 
 type ExerciseDraft = {
@@ -124,7 +125,13 @@ function errorMessage(error: unknown, fallback: string) {
   return error instanceof Error && error.message ? error.message : fallback;
 }
 
-export default function Workouts({ getToken, weightUnit, distanceUnit, onWeightUnitChange }: Props) {
+export default function Workouts({
+  getToken,
+  weightUnit,
+  distanceUnit,
+  onWeightUnitChange,
+  onDistanceUnitChange,
+}: Props) {
   const [workouts, setWorkouts] = useState<Workout[]>([]);
   const [listLoading, setListLoading] = useState(true);
   const [listError, setListError] = useState("");
@@ -139,6 +146,8 @@ export default function Workouts({ getToken, weightUnit, distanceUnit, onWeightU
   const [formError, setFormError] = useState("");
   const [weightUnitError, setWeightUnitError] = useState("");
   const [updatingWeightUnit, setUpdatingWeightUnit] = useState(false);
+  const [distanceUnitError, setDistanceUnitError] = useState("");
+  const [updatingDistanceUnit, setUpdatingDistanceUnit] = useState(false);
 
   const sortedWorkouts = useMemo(
     () => [...workouts].sort((a, b) => b.performed_on.localeCompare(a.performed_on)),
@@ -244,6 +253,32 @@ export default function Workouts({ getToken, weightUnit, distanceUnit, onWeightU
       setWeightUnitError(errorMessage(error, "Your weight unit couldn't be updated."));
     } finally {
       setUpdatingWeightUnit(false);
+    }
+  };
+
+  const changeDistanceUnit = async (nextUnit: "km" | "mi") => {
+    if (nextUnit === distanceUnit || updatingDistanceUnit) return;
+    setUpdatingDistanceUnit(true);
+    setDistanceUnitError("");
+    try {
+      await onDistanceUnitChange(nextUnit);
+      const distanceConversion = distanceUnit === "km" ? 1 / KM_PER_MI : KM_PER_MI;
+      const paceConversion = distanceUnit === "km" ? KM_PER_MI : 1 / KM_PER_MI;
+      setDraft((current) => current
+        ? {
+            ...current,
+            distance: current.distance === ""
+              ? ""
+              : String(Number((Number(current.distance) * distanceConversion).toFixed(2))),
+            pace: current.pace === ""
+              ? ""
+              : String(Number((Number(current.pace) * paceConversion).toFixed(2))),
+          }
+        : current);
+    } catch (error) {
+      setDistanceUnitError(errorMessage(error, "Your distance unit couldn't be updated."));
+    } finally {
+      setUpdatingDistanceUnit(false);
     }
   };
 
@@ -366,22 +401,41 @@ export default function Workouts({ getToken, weightUnit, distanceUnit, onWeightU
           <p>A clear record of the strength and miles you put in.</p>
         </div>
         <div className="workouts-heading-actions">
-          <div className="weight-unit-control">
-            <span className="weight-unit-label">WEIGHT UNIT</span>
-            <div className="weight-unit-switch" role="group" aria-label="Weight unit">
-              {(["kg", "lb"] as const).map((unit) => (
-                <button
-                  key={unit}
-                  type="button"
-                  aria-pressed={weightUnit === unit}
-                  disabled={updatingWeightUnit}
-                  onClick={() => void changeWeightUnit(unit)}
-                >
-                  {unit}
-                </button>
-              ))}
+          <div className="workouts-unit-controls">
+            <div className="unit-control">
+              <span className="unit-control-label">WEIGHT UNIT</span>
+              <div className="unit-switch" role="group" aria-label="Weight unit">
+                {(["kg", "lb"] as const).map((unit) => (
+                  <button
+                    key={unit}
+                    type="button"
+                    aria-pressed={weightUnit === unit}
+                    disabled={updatingWeightUnit}
+                    onClick={() => void changeWeightUnit(unit)}
+                  >
+                    {unit}
+                  </button>
+                ))}
+              </div>
+              {weightUnitError && <span className="unit-control-error" role="alert">{weightUnitError}</span>}
             </div>
-            {weightUnitError && <span className="weight-unit-error" role="alert">{weightUnitError}</span>}
+            <div className="unit-control">
+              <span className="unit-control-label">DISTANCE UNIT</span>
+              <div className="unit-switch" role="group" aria-label="Distance unit">
+                {(["km", "mi"] as const).map((unit) => (
+                  <button
+                    key={unit}
+                    type="button"
+                    aria-pressed={distanceUnit === unit}
+                    disabled={updatingDistanceUnit}
+                    onClick={() => void changeDistanceUnit(unit)}
+                  >
+                    {unit}
+                  </button>
+                ))}
+              </div>
+              {distanceUnitError && <span className="unit-control-error" role="alert">{distanceUnitError}</span>}
+            </div>
           </div>
           <button className="workouts-button workouts-button-primary" type="button" onClick={startNew}>
             <span aria-hidden="true">+</span> Log a session

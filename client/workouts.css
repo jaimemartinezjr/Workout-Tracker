@@ -36,12 +36,13 @@
   border-bottom: 1px solid var(--w-line);
 }
 .workouts-heading-actions { display: flex; align-items: end; gap: 16px; }
-.weight-unit-control { display: grid; gap: 7px; }
-.weight-unit-label { color: var(--w-muted); font: 500 9px "DM Mono", monospace; letter-spacing: .1em; }
-.weight-unit-switch { display: inline-flex; gap: 3px; padding: 3px; border: 1px solid #354137; border-radius: 5px; background: #141b16; }
-.weight-unit-switch button { min-width: 36px; height: 30px; padding: 0 9px; border: 0; border-radius: 3px; background: transparent; color: var(--w-muted); font-size: 11px !important; font-weight: 700 !important; text-transform: uppercase; }
-.weight-unit-switch button[aria-pressed="true"] { background: var(--w-green); color: #182214; }
-.weight-unit-error { max-width: 190px; color: var(--w-red); font-size: 10px; line-height: 1.4; }
+.workouts-unit-controls { display: flex; align-items: end; gap: 16px; }
+.unit-control { display: grid; gap: 7px; }
+.unit-control-label { color: var(--w-muted); font: 500 9px "DM Mono", monospace; letter-spacing: .1em; white-space: nowrap; }
+.unit-switch { display: inline-flex; gap: 3px; padding: 3px; border: 1px solid #354137; border-radius: 5px; background: #141b16; }
+.unit-switch button { min-width: 36px; height: 30px; padding: 0 9px; border: 0; border-radius: 3px; background: transparent; color: var(--w-muted); font-size: 11px !important; font-weight: 700 !important; text-transform: uppercase; }
+.unit-switch button[aria-pressed="true"] { background: var(--w-green); color: #182214; }
+.unit-control-error { max-width: 190px; color: var(--w-red); font-size: 10px; line-height: 1.4; }
 .workouts-kicker, .workouts-overline, .workouts-count, .workouts-footnote, .workout-kind, .workout-detail-date > div > span, .detail-section-heading, .run-summary > div > span {
   color: var(--w-muted);
   font: 500 10px "DM Mono", monospace;
@@ -281,8 +282,9 @@
   .workouts-heading { align-items: flex-start; flex-direction: column; padding-bottom: 24px; }
   .workouts-heading h1 { font-size: clamp(42px, 12vw, 58px); }
   .workouts-heading p { max-width: 290px; }
-  .workouts-heading-actions { width: 100%; align-items: center; justify-content: space-between; gap: 10px; }
-  .workouts-heading-actions > .workouts-button { align-self: stretch; }
+  .workouts-heading-actions { display: grid; width: 100%; gap: 13px; }
+  .workouts-unit-controls { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+  .workouts-heading-actions > .workouts-button { width: 100%; }
   .workouts-layout { padding-top: 18px; }
   .workouts-section-head { padding: 18px 15px 14px; }
   .workout-row { grid-template-columns: 17px 31px minmax(0, 1fr) 14px; gap: 9px; padding: 12px; }

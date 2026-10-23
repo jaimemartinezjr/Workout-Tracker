@@ -22,6 +22,10 @@ Add a user-selectable, account-persisted weight unit switch between kg and lb. K
 
 Correct the strength-entry layout after preview feedback: align each desktop column heading with its input, keep the exercise name in the Exercise field, and give sets, reps, and load fields enough room to show their full values on narrow screens. Show the field labels alongside the inputs on mobile instead of relying only on the desktop table header.
 
+## Distance-unit prompt
+
+Add an account-persisted km/mi toggle alongside the kg/lb control. Keep run distance and pace stored canonically in kilometers and convert both values in an open run draft when switching units. Show the selected unit in distance, pace, and run summaries.
+
 ## Verification notes
 
 - Exact isolated test command: `npm run test:data-isolation`.
