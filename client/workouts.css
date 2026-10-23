@@ -230,8 +230,8 @@
 .workout-form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px 13px; }
 .workout-field { display: flex; min-width: 0; flex-direction: column; gap: 7px; }
 .workout-field-wide { grid-column: 1 / -1; }
-.workout-field > span { color: #d7e0d7; font-size: 11px; font-weight: 600; }
-.workout-field > span i { margin-left: 4px; color: #859187; font-size: 9px; font-style: normal; font-weight: 400; }
+.workout-field-label { color: #d7e0d7; font-size: 11px; font-weight: 600; }
+.workout-field-label i { margin-left: 4px; color: #859187; font-size: 9px; font-style: normal; font-weight: 400; }
 .workout-field input, .workout-field select, .workout-field textarea, .exercise-row input {
   width: 100%;
   min-width: 0;
@@ -245,6 +245,8 @@
 .workout-field textarea { min-height: 75px; resize: vertical; padding: 10px; line-height: 1.5; }
 .workout-field input::placeholder, .workout-field textarea::placeholder, .exercise-row input::placeholder { color: #67746a; }
 .workout-field input[type="date"] { color-scheme: dark; }
+.workout-field input[aria-invalid="true"], .exercise-field input[aria-invalid="true"] { border-color: #e79284; box-shadow: 0 0 0 1px rgb(231 146 132 / 26%); }
+.workout-field-error, .exercise-field-error { display: block; color: #f2a79b; font-size: 10px; font-weight: 400; line-height: 1.4; }
 .workout-entry-section { margin: 24px 0 18px; }
 .workout-entry-heading { display: flex; align-items: end; justify-content: space-between; gap: 12px; margin-bottom: 13px; }
 .workout-entry-heading h3 { margin: 4px 0 0; font: 500 16px "Space Grotesk", sans-serif; }
@@ -253,7 +255,7 @@
 .exercise-row { align-items: center; min-height: 50px; border-top: 1px solid #2c362e; }
 .set-row-number { color: #718075; font: 9px "DM Mono", monospace; text-align: center; }
 .exercise-field { display: block; min-width: 0; }
-.exercise-field > span { display: none; }
+.exercise-field-label { display: none; }
 .exercise-field input { width: 100%; height: 38px; min-width: 0; padding: 0 8px; }
 .set-remove { display: grid; width: 20px; height: 24px; place-items: center; padding: 0; border: 0; background: transparent; color: #929d94; font-size: 17px !important; }
 .set-remove:hover:not(:disabled) { color: var(--w-red); }
@@ -305,7 +307,7 @@
   .exercise-sets { grid-area: sets; }
   .exercise-reps { grid-area: reps; }
   .exercise-load { grid-area: load; }
-  .exercise-field > span { display: block; margin-bottom: 5px; color: #87948a; font: 9px "DM Mono", monospace; letter-spacing: .06em; white-space: nowrap; }
+  .exercise-field-label { display: block; margin-bottom: 5px; color: #87948a; font: 9px "DM Mono", monospace; letter-spacing: .06em; white-space: nowrap; }
   .exercise-field input { height: 39px; padding: 0 7px; font-size: 13px !important; font-variant-numeric: tabular-nums; }
   .set-remove { position: absolute; top: 7px; right: 7px; }
   .detail-set { grid-template-columns: 24px minmax(0, 1fr) auto auto; gap: 6px; font-size: 11px; }
