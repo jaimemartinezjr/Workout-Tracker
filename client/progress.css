@@ -46,7 +46,7 @@
 .progress-target-summary > span:first-child { color: var(--w-muted); font: 500 8px "DM Mono", monospace; letter-spacing: .1em; }
 .progress-target-summary strong { color: #dce6dc; font: 500 12px "DM Mono", monospace; }
 .progress-latest { color: #8e9b91; font-size: 10px; }
-.progress-metric-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 11px; }
+.progress-metric-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 360px), 1fr)); gap: 11px; }
 .progress-chart { min-width: 0; padding: 12px 12px 9px; border: 1px solid #2d3930; border-radius: 4px; background: #111714; }
 .progress-chart-heading { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
 .progress-chart-heading h4 { margin: 0; color: #dce6dc; font: 500 11px "Space Grotesk", sans-serif; }

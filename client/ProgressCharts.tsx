@@ -25,7 +25,6 @@ type ChartPoint = {
   date: string;
   date_label: string;
   weight: number | null;
-  reps: number | null;
   distance: number | null;
   pace: number | null;
 };
@@ -33,7 +32,7 @@ type ChartPoint = {
 type MetricChartProps = {
   title: string;
   unit: string;
-  dataKey: "weight" | "reps" | "distance" | "pace";
+  dataKey: "weight" | "distance" | "pace";
   data: ChartPoint[];
   target: number;
   targetLabel: string;
@@ -181,7 +180,6 @@ function chartPointsForGoal(
       weight: point.weight_kg == null
         ? null
         : Number((point.weight_kg * weightMultiplier).toFixed(2)),
-      reps: point.reps,
       distance: point.distance_km == null
         ? null
         : Number((point.distance_km * distanceMultiplier).toFixed(2)),
@@ -300,16 +298,6 @@ export default function ProgressCharts({
                         targetLabel={`${displayNumber((goal.target_weight_kg ?? 0) * (weightUnit === "lb" ? 1 / KG_PER_LB : 1))} ${weightUnit}`}
                         color="#b4f36a"
                         formatValue={(value) => displayNumber(value, 1)}
-                      />
-                      <MetricChart
-                        title="Reps at top weight"
-                        unit="reps"
-                        dataKey="reps"
-                        data={data}
-                        target={goal.target_reps ?? 0}
-                        targetLabel={`${goal.target_reps} reps`}
-                        color="#93b8ff"
-                        formatValue={(value) => String(Math.round(value))}
                       />
                     </>
                   ) : (
