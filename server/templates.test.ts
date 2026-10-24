@@ -435,7 +435,16 @@ test("owners can update a template and its ordered items without changing anothe
       template: {
         name: string;
         activity_type: string;
-        items: Array<{ position: number; planned_distance_km: number; planned_pace_seconds_per_km: number }>;
+        items: Array<{
+          id: string;
+          position: number;
+          exercise_name: string | null;
+          planned_sets: number | null;
+          planned_reps: number | null;
+          planned_weight_kg: number | null;
+          planned_distance_km: number;
+          planned_pace_seconds_per_km: number;
+        }>;
       };
     };
     assert.equal(runPayload.template.name, "Updated running");
