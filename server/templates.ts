@@ -208,6 +208,46 @@ function normalizeCreatedTemplate(
   };
 }
 
+async function insertTemplateItems(
+  client: TemplatesClient,
+  templateId: string,
+  input: TemplateInput,
+): Promise<string[]> {
+  const itemIds: string[] = [];
+  if (input.activity_type === "strength") {
+    for (const [index, item] of input.items.entries()) {
+      const itemId = randomUUID();
+      itemIds.push(itemId);
+      await client.query(
+        `INSERT INTO public.template_items
+          (id, template_id, position, exercise_name, planned_sets, planned_reps,
+           planned_weight_kg, planned_distance_km, planned_pace_seconds_per_km)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, NULL, NULL)`,
+        [
+          itemId,
+          templateId,
+          index + 1,
+          item.exercise_name,
+          item.planned_sets,
+          item.planned_reps,
+          item.planned_weight_kg,
+        ],
+      );
+    }
+  } else {
+    const item = input.items[0];
+    const itemId = randomUUID();
+    itemIds.push(itemId);
+    await client.query(
+      `INSERT INTO public.template_items
+        (id, template_id, position, planned_distance_km, planned_pace_seconds_per_km)
+       VALUES ($1, $2, 1, $3, $4)`,
+      [itemId, templateId, item.planned_distance_km, item.planned_pace_seconds_per_km],
+    );
+  }
+  return itemIds;
+}
+
 export function createTemplatesRouter(
   database: TemplatesDatabase,
   resolveUserId: UserIdResolver,
@@ -298,43 +338,7 @@ export function createTemplatesRouter(
         throw new Error("The database did not return the created template.");
       }
 
-      const itemIds: string[] = [];
-      if (validation.value.activity_type === "strength") {
-        for (const [index, item] of validation.value.items.entries()) {
-          const itemId = randomUUID();
-          itemIds.push(itemId);
-          await client.query(
-            `INSERT INTO public.template_items
-              (id, template_id, position, exercise_name, planned_sets, planned_reps,
-               planned_weight_kg, planned_distance_km, planned_pace_seconds_per_km)
-             VALUES ($1, $2, $3, $4, $5, $6, $7, NULL, NULL)`,
-            [
-              itemId,
-              templateId,
-              index + 1,
-              item.exercise_name,
-              item.planned_sets,
-              item.planned_reps,
-              item.planned_weight_kg,
-            ],
-          );
-        }
-      } else {
-        const item = validation.value.items[0];
-        const itemId = randomUUID();
-        itemIds.push(itemId);
-        await client.query(
-          `INSERT INTO public.template_items
-            (id, template_id, position, planned_distance_km, planned_pace_seconds_per_km)
-           VALUES ($1, $2, 1, $3, $4)`,
-          [
-            itemId,
-            templateId,
-            item.planned_distance_km,
-            item.planned_pace_seconds_per_km,
-          ],
-        );
-      }
+      const itemIds = await insertTemplateItems(client, templateId, validation.value);
 
       await client.query("COMMIT");
       transactionStarted = false;
@@ -352,6 +356,68 @@ export function createTemplatesRouter(
       console.error("Could not create template.", error);
       response.status(500).json({
         error: "We couldn't save this template. Please try again.",
+      });
+    } finally {
+      client?.release();
+    }
+  });
+
+  router.put("/:id", async (request, response) => {
+    const userId = resolveUserId(request);
+    if (!userId) {
+      respondUnauthenticated(response);
+      return;
+    }
+
+    const validation = validateTemplate(request.body);
+    if (!validation.ok) {
+      response.status(400).json({ error: validation.error });
+      return;
+    }
+
+    let client: TemplatesClient | undefined;
+    let transactionStarted = false;
+    try {
+      client = await database.connect();
+      await client.query("BEGIN");
+      transactionStarted = true;
+      const templateId = request.params.id;
+      const templateResult = await client.query(
+        `UPDATE public.templates
+         SET name = $3, activity_type = $4
+         WHERE id = $1 AND user_id = $2
+         RETURNING ${templateColumns}`,
+        [templateId, userId, validation.value.name, validation.value.activity_type],
+      );
+      const template = templateResult.rows[0];
+      if (!template) {
+        await client.query("ROLLBACK");
+        transactionStarted = false;
+        response.status(404).json({ error: "Template not found." });
+        return;
+      }
+
+      await client.query(
+        "DELETE FROM public.template_items WHERE template_id = $1",
+        [templateId],
+      );
+      const itemIds = await insertTemplateItems(client, templateId, validation.value);
+      await client.query("COMMIT");
+      transactionStarted = false;
+      response.json({
+        template: normalizeCreatedTemplate(template, validation.value, itemIds),
+      });
+    } catch (error) {
+      if (client && transactionStarted) {
+        try {
+          await client.query("ROLLBACK");
+        } catch (rollbackError) {
+          console.error("Could not roll back failed template update.", rollbackError);
+        }
+      }
+      console.error("Could not update template.", error);
+      response.status(500).json({
+        error: "We couldn't save changes to this template. Please try again.",
       });
     } finally {
       client?.release();

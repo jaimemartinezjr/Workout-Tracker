@@ -89,8 +89,28 @@ class MemoryTemplatesDatabase implements TemplatesDatabase {
           this.templates.unshift(row);
           return { rows: [row], rowCount: 1 };
         }
+        if (sql.includes("UPDATE public.templates")) {
+          const [id, userId, name, activityType] = values;
+          const template = this.templates.find(
+            (item) => item.id === id && item.user_id === userId,
+          );
+          if (!template) return { rows: [], rowCount: 0 };
+          template.name = String(name);
+          template.activity_type = String(activityType);
+          return { rows: [template], rowCount: 1 };
+        }
+        if (sql.includes("DELETE FROM public.template_items")) {
+          const [templateId] = values;
+          for (let index = this.items.length - 1; index >= 0; index -= 1) {
+            if (this.items[index].template_id === templateId) this.items.splice(index, 1);
+          }
+          return { rows: [], rowCount: 0 };
+        }
         if (sql.includes("INSERT INTO public.template_items")) {
-          const [id, templateId, position, ...rest] = values;
+          const isRunItem = !sql.includes("exercise_name");
+          const [id, templateId, position, ...rest] = isRunItem
+            ? [values[0], values[1], 1, ...values.slice(2)]
+            : values;
           const row: ItemRow = {
             id: String(id),
             template_id: String(templateId),
@@ -102,7 +122,7 @@ class MemoryTemplatesDatabase implements TemplatesDatabase {
             planned_distance_km: null,
             planned_pace_seconds_per_km: null,
           };
-          if (rest.length === 4) {
+          if (isRunItem) {
             row.planned_distance_km = rest[0];
             row.planned_pace_seconds_per_km = rest[1];
           } else {
@@ -285,6 +305,154 @@ test("template validation rejects incomplete data before opening a transaction",
     });
     assert.equal(database.connects, 0);
     assert.equal(database.templates.length, 0);
+  });
+});
+
+test("owners can update a template and its ordered items without changing another user's template", async () => {
+  const database = new MemoryTemplatesDatabase(
+    [
+      {
+        id: "template-a",
+        user_id: "user-a",
+        name: "Upper body",
+        activity_type: "strength",
+        created_at: "2026-10-24T00:00:00.000Z",
+      },
+      {
+        id: "template-b",
+        user_id: "user-b",
+        name: "Their routine",
+        activity_type: "strength",
+        created_at: "2026-10-23T00:00:00.000Z",
+      },
+    ],
+    [
+      {
+        id: "item-a1",
+        template_id: "template-a",
+        position: 1,
+        exercise_name: "Bench press",
+        planned_sets: 3,
+        planned_reps: 5,
+        planned_weight_kg: 100,
+      },
+      {
+        id: "item-a2",
+        template_id: "template-a",
+        position: 2,
+        exercise_name: "Row",
+        planned_sets: 4,
+        planned_reps: 8,
+        planned_weight_kg: 50,
+      },
+      {
+        id: "item-b1",
+        template_id: "template-b",
+        position: 1,
+        exercise_name: "Squat",
+        planned_sets: 3,
+        planned_reps: 8,
+        planned_weight_kg: 80,
+      },
+    ],
+  );
+  const updateInput = {
+    name: "Updated upper body",
+    activity_type: "strength",
+    items: [
+      {
+        exercise_name: "Row",
+        planned_sets: 5,
+        planned_reps: 10,
+        planned_weight_kg: 55,
+      },
+      {
+        exercise_name: "Bench press",
+        planned_sets: 4,
+        planned_reps: 6,
+        planned_weight_kg: 105,
+      },
+    ],
+  };
+  const headers = {
+    "content-type": "application/json",
+    "x-test-user-id": "user-a",
+  };
+
+  await withTestApp(database, async (baseUrl) => {
+    const unauthorizedResponse = await fetch(`${baseUrl}/api/templates/template-a`, {
+      method: "PUT",
+      headers: { ...headers, "x-test-user-id": "user-b" },
+      body: JSON.stringify(updateInput),
+    });
+    assert.equal(unauthorizedResponse.status, 404);
+    assert.equal(database.templates[0].name, "Upper body");
+    assert.ok(database.items.some((item) => item.id === "item-a1"));
+
+    const response = await fetch(`${baseUrl}/api/templates/template-a`, {
+      method: "PUT",
+      headers,
+      body: JSON.stringify(updateInput),
+    });
+    assert.equal(response.status, 200);
+    const payload = await response.json() as {
+      template: {
+        id: string;
+        name: string;
+        created_at: string;
+        items: Array<{ position: number; exercise_name: string; planned_weight_kg: number }>;
+      };
+    };
+    assert.equal(payload.template.id, "template-a");
+    assert.equal(payload.template.name, "Updated upper body");
+    assert.equal(payload.template.created_at, "2026-10-24T00:00:00.000Z");
+    assert.deepEqual(
+      payload.template.items.map(({ position, exercise_name, planned_weight_kg }) => [
+        position,
+        exercise_name,
+        planned_weight_kg,
+      ]),
+      [[1, "Row", 55], [2, "Bench press", 105]],
+    );
+    assert.equal(database.templates.length, 2);
+    assert.equal(database.items.filter((item) => item.template_id === "template-a").length, 2);
+    assert.ok(database.items.some((item) => item.id === "item-b1"));
+
+    const runResponse = await fetch(`${baseUrl}/api/templates/template-a`, {
+      method: "PUT",
+      headers,
+      body: JSON.stringify({
+        name: "Updated running",
+        activity_type: "run",
+        items: [{
+          planned_distance_km: 10.5,
+          planned_pace_seconds_per_km: 320,
+        }],
+      }),
+    });
+    assert.equal(runResponse.status, 200);
+    const runPayload = await runResponse.json() as {
+      template: {
+        name: string;
+        activity_type: string;
+        items: Array<{ position: number; planned_distance_km: number; planned_pace_seconds_per_km: number }>;
+      };
+    };
+    assert.equal(runPayload.template.name, "Updated running");
+    assert.equal(runPayload.template.activity_type, "run");
+    assert.deepEqual(runPayload.template.items, [{
+      id: runPayload.template.items[0].id,
+      position: 1,
+      exercise_name: null,
+      planned_sets: null,
+      planned_reps: null,
+      planned_weight_kg: null,
+      planned_distance_km: 10.5,
+      planned_pace_seconds_per_km: 320,
+    }]);
+    assert.equal(database.items.filter((item) => item.template_id === "template-a").length, 1);
+    assert.ok(database.items.some((item) => item.id === "item-b1"));
+    assert.equal(database.commits, 2);
   });
 });
 

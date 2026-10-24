@@ -4,6 +4,7 @@ import {
   createTemplate,
   deleteTemplate,
   listTemplates,
+  updateTemplate,
   type TemplateInput,
   type WorkoutTemplate,
 } from "./templatesApi";
@@ -109,6 +110,46 @@ function draftFromWorkout(
     pace: run
       ? String(Number(((run.pace_seconds_per_km * paceMultiplier) / 60).toFixed(4)))
       : "",
+  };
+}
+
+function draftFromTemplate(
+  template: WorkoutTemplate,
+  weightUnit: Props["weightUnit"],
+  distanceUnit: Props["distanceUnit"],
+): TemplateDraft {
+  if (template.activity_type === "strength") {
+    const weightMultiplier = weightUnit === "lb" ? 1 / KG_PER_LB : 1;
+    const exercises = [...template.items]
+      .sort((left, right) => left.position - right.position)
+      .map((item) => ({
+        ...newStrengthItem(),
+        exercise_name: item.exercise_name ?? "",
+        sets: String(item.planned_sets ?? 3),
+        reps: item.planned_reps == null ? "" : String(item.planned_reps),
+        weight: item.planned_weight_kg == null
+          ? ""
+          : String(Number((item.planned_weight_kg * weightMultiplier).toFixed(2))),
+      }));
+    return {
+      ...newTemplateDraft("strength"),
+      name: template.name,
+      exercises: exercises.length ? exercises : [newStrengthItem()],
+    };
+  }
+
+  const item = template.items[0];
+  const distanceMultiplier = distanceUnit === "mi" ? 1 / KM_PER_MI : 1;
+  const paceMultiplier = distanceUnit === "mi" ? KM_PER_MI : 1;
+  return {
+    ...newTemplateDraft("run"),
+    name: template.name,
+    distance: item?.planned_distance_km == null
+      ? ""
+      : String(Number((item.planned_distance_km * distanceMultiplier).toFixed(2))),
+    pace: item?.planned_pace_seconds_per_km == null
+      ? ""
+      : String(Number(((item.planned_pace_seconds_per_km * paceMultiplier) / 60).toFixed(4))),
   };
 }
 
@@ -229,6 +270,7 @@ export default function TemplatesPanel({
   const [editorError, setEditorError] = useState("");
   const [saving, setSaving] = useState(false);
   const [isFromWorkout, setIsFromWorkout] = useState(false);
+  const [editingTemplateId, setEditingTemplateId] = useState<string | null>(null);
 
   const refresh = useCallback(async () => {
     setLoading(true);
@@ -252,6 +294,7 @@ export default function TemplatesPanel({
     if (!sourceWorkout) return;
     setDraft(draftFromWorkout(sourceWorkout, weightUnit, distanceUnit));
     setIsFromWorkout(true);
+    setEditingTemplateId(null);
     setEditorError("");
     setEditorOpen(true);
     onSourceWorkoutHandled();
@@ -263,6 +306,7 @@ export default function TemplatesPanel({
       if (event.key === "Escape" && !saving) {
         setEditorOpen(false);
         setEditorError("");
+        setEditingTemplateId(null);
       }
     };
     window.addEventListener("keydown", closeOnEscape);
@@ -273,13 +317,34 @@ export default function TemplatesPanel({
     if (saving) return;
     setEditorOpen(false);
     setEditorError("");
+    setEditingTemplateId(null);
   };
 
   const startManualTemplate = () => {
     setDraft(newTemplateDraft());
     setIsFromWorkout(false);
+    setEditingTemplateId(null);
     setEditorError("");
     setEditorOpen(true);
+  };
+
+  const startEditingTemplate = (template: WorkoutTemplate) => {
+    setDraft(draftFromTemplate(template, weightUnit, distanceUnit));
+    setIsFromWorkout(false);
+    setEditingTemplateId(template.id);
+    setEditorError("");
+    setEditorOpen(true);
+  };
+
+  const moveExercise = (index: number, offset: -1 | 1) => {
+    setDraft((current) => {
+      const targetIndex = index + offset;
+      if (targetIndex < 0 || targetIndex >= current.exercises.length) return current;
+      const exercises = [...current.exercises];
+      [exercises[index], exercises[targetIndex]] = [exercises[targetIndex], exercises[index]];
+      return { ...current, exercises };
+    });
+    setEditorError("");
   };
 
   const updateExercise = (
@@ -307,9 +372,14 @@ export default function TemplatesPanel({
 
     setSaving(true);
     try {
-      const saved = await createTemplate(getToken, result.input);
-      setTemplates((current) => [saved, ...current.filter((item) => item.id !== saved.id)]);
+      const saved = editingTemplateId
+        ? await updateTemplate(getToken, editingTemplateId, result.input)
+        : await createTemplate(getToken, result.input);
+      setTemplates((current) => editingTemplateId
+        ? current.map((item) => item.id === saved.id ? saved : item)
+        : [saved, ...current.filter((item) => item.id !== saved.id)]);
       setEditorOpen(false);
+      setEditingTemplateId(null);
     } catch (error) {
       setEditorError(
         error instanceof Error ? error.message : "This template couldn't be saved.",
@@ -382,6 +452,14 @@ export default function TemplatesPanel({
                   Use template
                 </button>
                 <button
+                  className="workouts-text-button"
+                  type="button"
+                  onClick={() => startEditingTemplate(template)}
+                  aria-label={`Edit ${template.name} template`}
+                >
+                  Edit
+                </button>
+                <button
                   className="workouts-text-button is-danger"
                   type="button"
                   onClick={() => void removeTemplate(template)}
@@ -408,10 +486,18 @@ export default function TemplatesPanel({
             <header className="template-editor-heading">
               <div>
                 <span className="workouts-overline">
-                  {isFromWorkout ? "SAVE A REUSABLE ROUTINE" : "BUILD A REUSABLE ROUTINE"}
+                  {isFromWorkout
+                    ? "SAVE A REUSABLE ROUTINE"
+                    : editingTemplateId
+                      ? "EDIT A SAVED ROUTINE"
+                      : "BUILD A REUSABLE ROUTINE"}
                 </span>
                 <h2 id="template-editor-title">
-                  {isFromWorkout ? "Save as template" : "Create template"}
+                  {isFromWorkout
+                    ? "Save as template"
+                    : editingTemplateId
+                      ? "Edit template"
+                      : "Create template"}
                 </h2>
               </div>
               <button
@@ -525,18 +611,38 @@ export default function TemplatesPanel({
                             onChange={(event) => updateExercise(index, "weight", event.target.value)}
                           />
                         </label>
-                        <button
-                          className="set-remove template-item-remove"
-                          type="button"
-                          onClick={() => setDraft((current) => ({
-                            ...current,
-                            exercises: current.exercises.filter((item) => item.id !== exercise.id),
-                          }))}
-                          aria-label={`Remove ${exercise.exercise_name || `exercise ${index + 1}`}`}
-                          disabled={draft.exercises.length <= 1}
-                        >
-                          ×
-                        </button>
+                        <div className="template-item-order-actions">
+                          <button
+                            className="set-remove template-item-reorder"
+                            type="button"
+                            onClick={() => moveExercise(index, -1)}
+                            aria-label={`Move ${exercise.exercise_name || `exercise ${index + 1}`} up`}
+                            disabled={index === 0}
+                          >
+                            ↑
+                          </button>
+                          <button
+                            className="set-remove template-item-reorder"
+                            type="button"
+                            onClick={() => moveExercise(index, 1)}
+                            aria-label={`Move ${exercise.exercise_name || `exercise ${index + 1}`} down`}
+                            disabled={index === draft.exercises.length - 1}
+                          >
+                            ↓
+                          </button>
+                          <button
+                            className="set-remove template-item-remove"
+                            type="button"
+                            onClick={() => setDraft((current) => ({
+                              ...current,
+                              exercises: current.exercises.filter((item) => item.id !== exercise.id),
+                            }))}
+                            aria-label={`Remove ${exercise.exercise_name || `exercise ${index + 1}`}`}
+                            disabled={draft.exercises.length <= 1}
+                          >
+                            ×
+                          </button>
+                        </div>
                       </div>
                     ))}
                   </div>
@@ -592,7 +698,11 @@ export default function TemplatesPanel({
                   Cancel
                 </button>
                 <button className="workouts-button workouts-button-primary" type="submit" disabled={saving}>
-                  {saving ? "Saving…" : "Save template"}
+                  {saving
+                    ? "Saving…"
+                    : editingTemplateId
+                      ? "Save changes"
+                      : "Save template"}
                 </button>
               </div>
             </form>

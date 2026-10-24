@@ -85,6 +85,19 @@ export async function createTemplate(
   return result.template;
 }
 
+export async function updateTemplate(
+  getToken: GetToken,
+  id: string,
+  template: TemplateInput,
+): Promise<WorkoutTemplate> {
+  const result = await request<{ template: WorkoutTemplate }>(
+    getToken,
+    `/api/templates/${encodeURIComponent(id)}`,
+    { method: "PUT", body: JSON.stringify(template) },
+  );
+  return result.template;
+}
+
 export function deleteTemplate(getToken: GetToken, id: string): Promise<void> {
   return request(
     getToken,

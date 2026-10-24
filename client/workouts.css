@@ -109,7 +109,7 @@
 .template-strength-row {
   position: relative;
   display: grid;
-  grid-template-columns: minmax(130px, 1.5fr) repeat(3, minmax(68px, .65fr)) 28px;
+  grid-template-columns: minmax(130px, 1.5fr) repeat(3, minmax(68px, .65fr)) 76px;
   align-items: end;
   gap: 9px;
   padding: 10px;
@@ -118,7 +118,10 @@
 }
 .template-strength-row .workout-field-label { font-size: 8px; }
 .template-strength-row input { min-width: 0; }
-.template-item-remove { margin-bottom: 4px; }
+.template-item-order-actions { display: flex; align-items: center; justify-content: flex-end; gap: 2px; margin-bottom: 4px; }
+.template-item-order-actions .template-item-reorder { width: 22px; color: #a7b1a9; font-size: 13px !important; }
+.template-item-order-actions .template-item-reorder:hover:not(:disabled) { color: var(--w-green); }
+.template-item-order-actions .template-item-remove { width: 22px; }
 .template-entry-section .workout-hint { margin-top: 9px; }
 .template-editor-error { margin: 15px 0 0; color: #f2a79b; font-size: 11px; line-height: 1.5; }
 .template-editor-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 22px; padding-top: 16px; border-top: 1px solid var(--w-line); }
@@ -383,7 +386,7 @@
   .template-card-actions { width: 100%; justify-content: space-between; }
   .template-strength-row { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 9px; }
   .template-strength-row .workout-field:first-child { grid-column: 1 / -1; }
-  .template-item-remove { justify-self: end; }
+  .template-item-order-actions { justify-self: end; }
   .template-editor { padding: 18px 15px; }
   .template-editor-backdrop { align-items: start; padding: 10px; }
   .workouts-layout { padding-top: 18px; }
