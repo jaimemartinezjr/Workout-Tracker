@@ -4,9 +4,9 @@ The app uses Clerk sign-up/sign-in/sign-out and links each signed-in Clerk accou
 
 ## Database setup
 
-Replit provides a managed PostgreSQL database for development and supplies its private `DATABASE_URL` to the server. On startup in development, the server creates the `users` table if it is missing and applies the idempotent `server/migrations/002_workouts.sql` schema for workouts, lifting sets, and run details.
+Replit provides a managed PostgreSQL database for development and supplies its private `DATABASE_URL` to the server. On startup in development, the server creates the `users` table if it is missing and applies the idempotent migrations in `server/migrations/` for workouts, goals, and fractional-second precision for run-goal pace.
 
-The migration file uses `CREATE TABLE IF NOT EXISTS` and `CREATE INDEX IF NOT EXISTS`. Production startup only checks that the tables exist; it never applies the migration. Before a production release, review the migration, make a database backup, and apply the SQL in `server/migrations/002_workouts.sql` to the intended production database using the approved production database migration process. Verify the tables and indexes there, then deploy the matching application code. Do not point a development process at production, copy a development database URL into production, or use this migration to replace production data.
+Production startup checks that the expected tables and fractional-precision goal pace column exist; it never applies migrations. For production schema changes, merge the code so the development schema is current, then use Replit's Publish flow to review and apply its development-to-production schema diff before the updated app is released. Do not connect a development process to production or copy a development database URL into production.
 
 For local development outside Replit, provide your own PostgreSQL connection string as `DATABASE_URL`.
 

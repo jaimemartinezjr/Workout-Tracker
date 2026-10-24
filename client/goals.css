@@ -1,0 +1,113 @@
+.goals-section {
+  margin-top: 26px;
+  padding: 22px;
+  border: 1px solid var(--w-line);
+  border-radius: 7px;
+  background: linear-gradient(145deg, rgb(180 243 106 / 3%), transparent 48%), var(--w-surface);
+}
+.goals-section-head, .goals-form-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+.goals-section-head h2 {
+  margin: 5px 0 0;
+  font: 500 23px/1.12 "Space Grotesk", sans-serif;
+  letter-spacing: -.04em;
+}
+.goals-section-head .workouts-button-primary > span { font-size: 19px; font-weight: 400; }
+.goals-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 250px), 1fr));
+  gap: 12px;
+  margin-top: 18px;
+}
+.goal-card {
+  display: grid;
+  grid-template-columns: 34px minmax(0, 1fr);
+  align-items: start;
+  gap: 12px;
+  min-width: 0;
+  padding: 15px;
+  border: 1px solid #344137;
+  border-radius: 5px;
+  background: #1b241d;
+}
+.goal-card-mark {
+  display: grid;
+  width: 34px;
+  height: 34px;
+  place-items: center;
+  border: 1px solid #41503e;
+  border-radius: 50%;
+  color: var(--w-green);
+  font: 500 12px "DM Mono", monospace;
+}
+.goal-card.run .goal-card-mark { border-color: #40524f; color: #9cd2bd; }
+.goal-card-copy { min-width: 0; }
+.goal-card-type { color: var(--w-muted); font: 500 9px "DM Mono", monospace; letter-spacing: .12em; }
+.goal-card-copy h3 {
+  overflow: hidden;
+  margin: 5px 0 3px;
+  font: 500 16px "Space Grotesk", sans-serif;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.goal-card-copy p { margin: 0; color: #d7e0d7; font: 11px "DM Mono", monospace; }
+.goal-card-actions {
+  display: flex;
+  grid-column: 2;
+  gap: 16px;
+  margin-top: 2px;
+}
+.goals-section .workouts-text-button { font-size: 11px !important; }
+.goals-section .workouts-text-button.is-danger { color: #f1a79a; }
+.goals-section .workouts-text-button.is-danger:hover { color: var(--w-red); }
+.goals-empty { margin: 17px 0 0; color: var(--w-muted); font-size: 12px; line-height: 1.6; }
+.goals-status { margin: 14px 0 0; color: var(--w-green); font-size: 11px; }
+.goals-error { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: 14px 0 0; color: #f2a79b; font-size: 11px; line-height: 1.45; }
+.goals-form {
+  margin-top: 18px;
+  padding: 18px;
+  border: 1px solid #354137;
+  border-radius: 5px;
+  background: #151c17;
+}
+.goals-form-head { margin-bottom: 15px; }
+.goals-form-head h3 { margin: 0; font: 500 17px "Space Grotesk", sans-serif; }
+.goals-form > .goal-field { max-width: 260px; margin-bottom: 14px; }
+.goals-form-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+.goal-field { display: flex; min-width: 0; flex-direction: column; gap: 7px; }
+.goal-field input, .goal-field select {
+  width: 100%;
+  min-width: 0;
+  height: 42px;
+  padding: 0 11px;
+  border: 1px solid #3a463d;
+  border-radius: 4px;
+  background: #111714;
+  color: var(--w-text);
+  font-size: 12px;
+}
+.goal-field input::placeholder { color: #67746a; }
+.goal-field input[aria-invalid="true"], .goal-field select[aria-invalid="true"] {
+  border-color: #e79284;
+  box-shadow: 0 0 0 1px rgb(231 146 132 / 26%);
+}
+.goal-field-hint { color: var(--w-muted); font-size: 10px; line-height: 1.4; }
+.goal-field-error { color: #f2a79b; font-size: 10px; line-height: 1.4; }
+.goals-form-actions { display: flex; justify-content: flex-end; gap: 9px; margin-top: 18px; padding-top: 15px; border-top: 1px solid var(--w-line); }
+@media (max-width: 640px) {
+  .goals-section { padding: 17px; }
+  .goals-form { padding: 14px; }
+  .goals-form-grid { grid-template-columns: 1fr 1fr; }
+}
+@media (max-width: 400px) {
+  .goals-form-grid { grid-template-columns: 1fr; }
+  .goals-section-head { align-items: flex-start; }
+  .goals-section-head .workouts-button { min-height: 38px; padding: 0 10px; white-space: nowrap; }
+  .goal-card { grid-template-columns: 30px minmax(0, 1fr); gap: 9px; padding: 12px; }
+  .goal-card-mark { width: 30px; height: 30px; }
+  .goals-error { align-items: flex-start; flex-direction: column; }
+}

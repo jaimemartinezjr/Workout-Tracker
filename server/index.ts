@@ -4,6 +4,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { clerkClient, clerkMiddleware, getAuth } from "@clerk/express";
 import { initializeDatabase, pool } from "./db.js";
+import { createGoalsRouter } from "./goals.js";
 import { createWorkoutsRouter } from "./workouts.js";
 
 const requiredEnvironment = [
@@ -131,6 +132,14 @@ app.patch("/api/me/preferences", async (request, response) => {
 app.use(
   "/api/workouts",
   createWorkoutsRouter(pool, (request) => {
+    const { isAuthenticated, userId } = getAuth(request);
+    return isAuthenticated ? userId : null;
+  }),
+);
+
+app.use(
+  "/api/goals",
+  createGoalsRouter(pool, (request) => {
     const { isAuthenticated, userId } = getAuth(request);
     return isAuthenticated ? userId : null;
   }),

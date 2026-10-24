@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState, type FormEvent } from "react";
+import GoalsPanel from "./GoalsPanel";
 import {
   deleteWorkout,
   getWorkout,
@@ -517,6 +518,12 @@ export default function Workouts({
           </button>
         </div>
       </header>
+
+      <GoalsPanel
+        getToken={getToken}
+        weightUnit={weightUnit}
+        distanceUnit={distanceUnit}
+      />
 
       <div className="workouts-layout">
         <section className="workout-history" aria-labelledby="history-title">
