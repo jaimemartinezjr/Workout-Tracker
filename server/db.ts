@@ -14,6 +14,14 @@ export async function initializeDatabase() {
     await pool.query("SELECT 1 FROM public.lifting_sets LIMIT 0");
     await pool.query("SELECT 1 FROM public.run_details LIMIT 0");
     await pool.query("SELECT 1 FROM public.goals LIMIT 0");
+    try {
+      await pool.query("SELECT 1 FROM public.templates LIMIT 0");
+      await pool.query("SELECT 1 FROM public.template_items LIMIT 0");
+    } catch {
+      throw new Error(
+        "Production database is missing workout templates. Apply server/migrations/005_templates.sql before starting this release.",
+      );
+    }
     const paceColumn = await pool.query(
       `SELECT data_type, numeric_scale
        FROM information_schema.columns
@@ -58,4 +66,9 @@ export async function initializeDatabase() {
     "utf8",
   );
   await pool.query(fractionalPaceSchema);
+  const templatesSchema = await readFile(
+    new URL("./migrations/005_templates.sql", import.meta.url),
+    "utf8",
+  );
+  await pool.query(templatesSchema);
 }

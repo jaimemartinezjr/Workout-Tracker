@@ -6,6 +6,7 @@ import { clerkClient, clerkMiddleware, getAuth } from "@clerk/express";
 import { initializeDatabase, pool } from "./db.js";
 import { createGoalsRouter } from "./goals.js";
 import { createProgressRouter } from "./progress.js";
+import { createTemplatesRouter } from "./templates.js";
 import { createWorkoutsRouter } from "./workouts.js";
 
 const requiredEnvironment = [
@@ -149,6 +150,14 @@ app.use(
 app.use(
   "/api/progress",
   createProgressRouter(pool, (request) => {
+    const { isAuthenticated, userId } = getAuth(request);
+    return isAuthenticated ? userId : null;
+  }),
+);
+
+app.use(
+  "/api/templates",
+  createTemplatesRouter(pool, (request) => {
     const { isAuthenticated, userId } = getAuth(request);
     return isAuthenticated ? userId : null;
   }),
