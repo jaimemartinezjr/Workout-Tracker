@@ -18,6 +18,7 @@ type Props = {
   getToken: () => Promise<string | null>;
   weightUnit: "kg" | "lb";
   distanceUnit: "km" | "mi";
+  onGoalsChanged: () => void;
 };
 
 type GoalDraft = {
@@ -77,7 +78,12 @@ function getErrorMessage(error: unknown, fallback: string) {
   return error instanceof Error && error.message ? error.message : fallback;
 }
 
-export default function GoalsPanel({ getToken, weightUnit, distanceUnit }: Props) {
+export default function GoalsPanel({
+  getToken,
+  weightUnit,
+  distanceUnit,
+  onGoalsChanged,
+}: Props) {
   const [goals, setGoals] = useState<Goal[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState("");
@@ -206,6 +212,7 @@ export default function GoalsPanel({ getToken, weightUnit, distanceUnit }: Props
       setEditingId(undefined);
       setFieldErrors({});
       setStatusMessage("Goal saved.");
+      onGoalsChanged();
     } catch (error) {
       setFormError(getErrorMessage(error, "This goal couldn't be saved. Please try again."));
     } finally {
@@ -225,6 +232,7 @@ export default function GoalsPanel({ getToken, weightUnit, distanceUnit }: Props
       setGoals((current) => current.filter((item) => item.id !== goal.id));
       if (editingId === goal.id) closeForm();
       setStatusMessage("Goal removed.");
+      onGoalsChanged();
     } catch (error) {
       setLoadError(getErrorMessage(error, "This goal couldn't be removed. Please try again."));
     } finally {
