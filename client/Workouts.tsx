@@ -1,4 +1,12 @@
-import { useCallback, useEffect, useMemo, useState, type FormEvent } from "react";
+import {
+  lazy,
+  Suspense,
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+  type FormEvent,
+} from "react";
 import GoalsPanel from "./GoalsPanel";
 import {
   deleteWorkout,
@@ -12,6 +20,8 @@ import {
   type WorkoutInput,
 } from "./workoutsApi";
 import "./workouts.css";
+
+const ProgressCharts = lazy(() => import("./ProgressCharts"));
 
 type Props = {
   getToken: () => Promise<string | null>;
@@ -161,6 +171,11 @@ export default function Workouts({
   const [updatingWeightUnit, setUpdatingWeightUnit] = useState(false);
   const [distanceUnitError, setDistanceUnitError] = useState("");
   const [updatingDistanceUnit, setUpdatingDistanceUnit] = useState(false);
+  const [progressRefreshKey, setProgressRefreshKey] = useState(0);
+
+  const refreshProgress = () => {
+    setProgressRefreshKey((current) => current + 1);
+  };
 
   const clearFieldError = (fieldId: string) => {
     if (fieldErrors[fieldId] && !Object.keys(fieldErrors).some((key) => key !== fieldId)) {
@@ -445,6 +460,7 @@ export default function Workouts({
       setDraft(draftFromDetail(detail, weightUnit, distanceUnit));
       setEditing(false);
       setFormMessage("Session saved.");
+      refreshProgress();
       await refresh();
     } catch (error) {
       setFormError(errorMessage(error, "Your session couldn't be saved. Please try again."));
@@ -460,6 +476,7 @@ export default function Workouts({
     try {
       await deleteWorkout(getToken, activeDetail.workout.id);
       closeDetail();
+      refreshProgress();
       await refresh();
     } catch (error) {
       setDetailError(errorMessage(error, "This session couldn't be deleted. Please try again."));
@@ -523,7 +540,17 @@ export default function Workouts({
         getToken={getToken}
         weightUnit={weightUnit}
         distanceUnit={distanceUnit}
+        onGoalsChanged={refreshProgress}
       />
+
+      <Suspense fallback={<p className="progress-message">Loading progress charts…</p>}>
+        <ProgressCharts
+          getToken={getToken}
+          weightUnit={weightUnit}
+          distanceUnit={distanceUnit}
+          refreshKey={progressRefreshKey}
+        />
+      </Suspense>
 
       <div className="workouts-layout">
         <section className="workout-history" aria-labelledby="history-title">
