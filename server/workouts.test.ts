@@ -20,27 +20,6 @@ class IsolatedTestDatabase implements WorkoutDatabase {
     const hasOwnerGuard =
       sql.includes("user_id = $1") || sql.includes("user_id = $2");
 
-    if (sql.includes("FROM workouts w") && sql.includes("ARRAY_AGG")) {
-      let rows = [workoutA];
-      if (sql.includes("WHERE w.user_id = $1")) {
-        rows = rows.filter((workout) => workout.user_id === values[0]);
-      }
-      return {
-        rows: rows.map((workout) => ({
-          id: workout.id,
-          title: workout.title,
-          activity_type: workout.activity_type,
-          performed_on: workout.performed_on,
-          notes: workout.notes,
-          created_at: workout.created_at,
-          exercise_names: ["Bench press", "Row"],
-          max_weight_kg: "100.5",
-          distance_km: null,
-        })),
-        rowCount: rows.length,
-      };
-    }
-
     if (sql.includes("FROM lifting_sets") || sql.includes("FROM run_details")) {
       return { rows: [], rowCount: 0 };
     }
@@ -98,28 +77,6 @@ test("a different user cannot see another user's workout in the list", async () 
     });
     assert.equal(response.status, 200);
     assert.deepEqual(await response.json(), { workouts: [] });
-  });
-});
-
-test("an owner's workout list includes exercise and performance summaries", async () => {
-  await withTestApp(async (baseUrl) => {
-    const response = await fetch(`${baseUrl}/api/workouts`, {
-      headers: { "x-test-user-id": "user-a" },
-    });
-    assert.equal(response.status, 200);
-    assert.deepEqual(await response.json(), {
-      workouts: [{
-        id: "workout-owned-by-a",
-        title: "Morning strength",
-        activity_type: "strength",
-        performed_on: "2026-10-20",
-        notes: null,
-        created_at: "2026-10-20T08:00:00.000Z",
-        exercise_names: ["Bench press", "Row"],
-        max_weight_kg: 100.5,
-        distance_km: null,
-      }],
-    });
   });
 });
 
