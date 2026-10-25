@@ -1,6 +1,31 @@
 # Strength & Performance Tracker
 
-The app uses Clerk sign-up/sign-in/sign-out and links each signed-in Clerk account to one private row in PostgreSQL's `users` table. Signed-in users can create, view, edit, and delete their own strength and running workouts.
+A personal training log for strength workouts and runs. The app uses Clerk for sign-up, sign-in, and sign-out, and keeps each signed-in user's records private.
+
+## What the app does
+
+- Create, view, edit, and delete strength and running workouts.
+- Set lift goals for weight and reps, and running goals for distance and pace.
+- Create reusable strength and running templates, including templates saved from a workout, and star templates for quick access.
+- Search, filter, and sort workout history.
+- View training charts and summary stats, including workouts this week, heaviest set, and longest run.
+
+See [schema.md](schema.md) for the database tables, columns, relationships, and differences from the planned schema.
+
+## Live URL
+
+There is no live URL yet. Replit currently reports that this project has no active deployment. Publish the app in Replit to create a production URL, then add that URL here.
+
+## Tools used
+
+- **React and TypeScript** for the interface.
+- **Node.js and Express** for the server and API.
+- **Clerk** for authentication.
+- **Replit-managed PostgreSQL** for persistent data.
+- **Recharts** for progress charts.
+- **Vite** for development and production builds.
+- **Node's test runner and Playwright** for automated tests.
+- **Replit** for the development workspace and deployment.
 
 ## Database setup
 
@@ -12,12 +37,14 @@ For local development outside Replit, provide your own PostgreSQL connection str
 
 ## Run locally
 
-1. Create a Clerk application and provide its keys in your local environment.
-2. Copy `.env.example` to `.env` and provide your PostgreSQL `DATABASE_URL`. Do not commit `.env`.
-3. Install dependencies with `npm install`.
+1. Install Node.js and npm.
+2. Install dependencies with `npm install`.
+3. Create a Clerk application, copy `.env.example` to `.env`, and provide the Clerk keys and a PostgreSQL `DATABASE_URL`. Do not commit `.env`.
 4. Start the app with `npm run dev`.
 
-Vite serves the interface on port 5000 and forwards `/api` requests to the Express server on port 3000. Every workout endpoint derives ownership from the server-verified Clerk session; the browser never supplies an owner ID. Workout detail and child-record queries also include the authenticated owner's ID.
+Vite serves the interface on port 5000 and forwards `/api` requests to the Express server on port 3000. In Replit, the managed development database supplies `DATABASE_URL` to the server automatically. On startup, the development server creates the `users` table and applies the SQL files in `server/migrations/`.
+
+Every authenticated data endpoint derives ownership from the server-verified Clerk session; the browser never supplies an owner ID. Keep `DATABASE_URL` server-side and private.
 
 ## Data-isolation test
 
