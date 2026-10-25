@@ -8,6 +8,7 @@ import {
   type FormEvent,
 } from "react";
 import GoalsPanel from "./GoalsPanel";
+import TemplatesPanel from "./TemplatesPanel";
 import {
   deleteWorkout,
   getWorkout,
@@ -19,6 +20,7 @@ import {
   type WorkoutDetail,
   type WorkoutInput,
 } from "./workoutsApi";
+import type { WorkoutTemplate } from "./templatesApi";
 import "./workouts.css";
 
 const ProgressCharts = lazy(() => import("./ProgressCharts"));
@@ -130,6 +132,44 @@ function draftFromDetail(detail: WorkoutDetail, weightUnit: "kg" | "lb", distanc
   };
 }
 
+function draftFromTemplate(
+  template: WorkoutTemplate,
+  weightUnit: "kg" | "lb",
+  distanceUnit: "km" | "mi",
+): WorkoutDraft {
+  const draft = newDraft(template.activity_type);
+  if (template.activity_type === "strength") {
+    const weightMultiplier = weightUnit === "lb" ? 1 / KG_PER_LB : 1;
+    const exercises = template.items.map((item) => createExerciseDraft({
+      exercise_name: item.exercise_name ?? "",
+      weight: item.planned_weight_kg == null
+        ? ""
+        : String(Number((item.planned_weight_kg * weightMultiplier).toFixed(2))),
+      set_count: String(item.planned_sets ?? 3),
+      reps: item.planned_reps == null ? "" : String(item.planned_reps),
+    }));
+    return {
+      ...draft,
+      title: template.name,
+      exercises: exercises.length ? exercises : draft.exercises,
+    };
+  }
+
+  const item = template.items[0];
+  const distanceMultiplier = distanceUnit === "mi" ? 1 / KM_PER_MI : 1;
+  const paceMultiplier = distanceUnit === "mi" ? KM_PER_MI : 1;
+  return {
+    ...draft,
+    title: template.name,
+    distance: item?.planned_distance_km == null
+      ? ""
+      : String(Number((item.planned_distance_km * distanceMultiplier).toFixed(2))),
+    pace: item?.planned_pace_seconds_per_km == null
+      ? ""
+      : String(Number(((item.planned_pace_seconds_per_km * paceMultiplier) / 60).toFixed(4))),
+  };
+}
+
 function formatDate(date: string) {
   const parsed = new Date(`${date.slice(0, 10)}T12:00:00`);
   if (Number.isNaN(parsed.getTime())) return date;
@@ -172,9 +212,47 @@ export default function Workouts({
   const [distanceUnitError, setDistanceUnitError] = useState("");
   const [updatingDistanceUnit, setUpdatingDistanceUnit] = useState(false);
   const [progressRefreshKey, setProgressRefreshKey] = useState(0);
+  const [templateSourceWorkout, setTemplateSourceWorkout] = useState<WorkoutDetail | null>(null);
 
   const refreshProgress = () => {
     setProgressRefreshKey((current) => current + 1);
+  };
+
+  const clearTemplateSourceWorkout = useCallback(() => {
+    setTemplateSourceWorkout(null);
+  }, []);
+
+  const applyTemplate = (template: WorkoutTemplate) => {
+    const draftHasContent = Boolean(draft && (
+      draft.title.trim() ||
+      draft.notes.trim() ||
+      draft.exercises.some((exercise) =>
+        exercise.exercise_name.trim() || exercise.weight.trim() || exercise.reps.trim(),
+      ) ||
+      draft.distance.trim() ||
+      draft.pace.trim() ||
+      draft.calories.trim()
+    ));
+    if (
+      editing &&
+      draftHasContent &&
+      !window.confirm("Replace your current unsaved session with this template?")
+    ) {
+      return;
+    }
+    setActiveDetail(null);
+    setDraft(draftFromTemplate(template, weightUnit, distanceUnit));
+    setEditing(true);
+    setDetailError("");
+    setFormError("");
+    setFormMessage("");
+    setFieldErrors({});
+    window.requestAnimationFrame(() => {
+      document.querySelector(".workout-panel")?.scrollIntoView({
+        behavior: "smooth",
+        block: "center",
+      });
+    });
   };
 
   const clearFieldError = (fieldId: string) => {
@@ -536,6 +614,16 @@ export default function Workouts({
         </div>
       </header>
 
+      <TemplatesPanel
+        getToken={getToken}
+        weightUnit={weightUnit}
+        distanceUnit={distanceUnit}
+        sourceWorkout={templateSourceWorkout}
+        onSourceWorkoutHandled={clearTemplateSourceWorkout}
+        onUseTemplate={applyTemplate}
+        disableUse={detailLoading || saving || deleting}
+      />
+
       <GoalsPanel
         getToken={getToken}
         weightUnit={weightUnit}
@@ -890,6 +978,13 @@ export default function Workouts({
               <div className="workout-detail-actions">
                 <button className="workouts-button workouts-button-danger" type="button" onClick={() => void removeWorkout()} disabled={deleting}>
                   {deleting ? "Deleting…" : "Delete"}
+                </button>
+                <button
+                  className="workouts-button workouts-button-quiet"
+                  type="button"
+                  onClick={() => setTemplateSourceWorkout(activeDetail)}
+                >
+                  Save as template
                 </button>
                 <button className="workouts-button workouts-button-primary" type="button" onClick={() => {
                   setDraft(draftFromDetail(activeDetail, weightUnit, distanceUnit));
