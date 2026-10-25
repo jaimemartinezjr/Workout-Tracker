@@ -9,12 +9,6 @@ export type Workout = {
   created_at: string;
 };
 
-export type WorkoutListItem = Workout & {
-  exercise_names: string[];
-  max_weight_kg: number | null;
-  distance_km: number | null;
-};
-
 export type LiftingSet = {
   id?: string;
   exercise_name: string;
@@ -72,8 +66,8 @@ async function request<T>(
 
 export async function listWorkouts(
   getToken: GetToken,
-): Promise<WorkoutListItem[]> {
-  const result = await request<{ workouts: WorkoutListItem[] }>(
+): Promise<Workout[]> {
+  const result = await request<{ workouts: Workout[] }>(
     getToken,
     "/api/workouts",
   );
