@@ -61,13 +61,13 @@ The feature I'm least sure I can build correctly is data isolation across workou
 
 | Planned feature | Shipped / Changed / Cut | Status (Done/Backlogged) | Learning | What changed and why (one line) |
 |---|---|---|---|---|
-| Sign up, log in, log out, and user data isolation | | | | |
-| Database model: users and related workout tables | | | | |
-| Create, view, edit, and delete strength and running workouts | | | | |
-| Required-field validation with friendly messages | | | | |
-| Goal targets for lifts and runs | | | | |
-| Progress charts for lifts and running | | | | |
-| Create and reuse workout templates | | | | |
-| Star templates and view starred templates | | | | |
-| Search, filter, and sort workouts | | | | |
-| Dashboard with charts and summary stats | | | | |
+| Sign up, log in, log out, and user data isolation | Shipped: Clerk account controls, a PostgreSQL user row on first signed-in load, and owner-scoped data routes. | Done | Using the verified Clerk ID as the ownership key keeps identity and data access aligned. | Kept Clerk-managed authentication and synced each signed-in account to `users`. |
+| Database model: users and related workout tables | Shipped: `users`, `workouts`, `lifting_sets`, `run_details`, `goals`, `templates`, `template_items`, and the shared `stars` table with foreign-key relationships. | Done | Separate child tables fit variable lifting sets and the one-to-one run details. | Store weights and distances canonically in kg/km, then convert using each user's saved units. |
+| Create, view, edit, and delete strength and running workouts | Shipped: create/list/detail-panel/edit/delete flows for both activities, with a delete confirmation. | Done | A list plus a detail panel supports reviewing and editing a session in one view. | Strength sets and run details remain attached to their parent workout. |
+| Required-field validation with friendly messages | Shipped: required-field and value checks for workout, goal, and template forms, with friendly correction messages. | Done | Server-side validation is needed even when forms also provide immediate feedback. | Validate at both the form and API so incomplete records are not saved. |
+| Goal targets for lifts and runs | Shipped: multiple strength and running goals, including lift weight/reps and run distance/pace. | Done | Pace needs exact minute-and-second handling to avoid rounding a goal unexpectedly. | Added goal types and input handling specific to each activity. |
+| Progress charts for lifts and running | Shipped: goal comparisons for lift weight and run distance/pace; strength-goal reps are not charted. | Done | Target lines make historical measurements useful for assessing a specific goal. | Kept goal comparisons while adding separate history trends. |
+| Create and reuse workout templates | Shipped: strength/run templates can be created directly or saved from a logged workout, then reused. | Done | Supporting both creation methods avoids re-entering a session that already exists. | Templates store ordered planned items and can populate a new workout. |
+| Star templates and view starred templates | Shipped: users can star/unstar templates and filter to a Starred view; all links use one shared `stars` junction table. | Done | A composite user/template key prevents duplicate stars while keeping each user's view private. | Use one many-to-many table instead of per-user star records or tables. |
+| Search, filter, and sort workouts | Shipped: search by workout/exercise text, filter by date and activity, and sort newest/oldest, longest/shortest distance, and highest/lowest weight. | Done | Sort options need to match the activity and metric being compared. | Added activity-aware sorting so run distances and lift weights rank correctly. |
+| Dashboard with charts and summary stats | Shipped: weekly workout count, heaviest set, longest run, selectable lift weight/reps charts, and run distance/pace charts with 30-day, 90-day, and all-time ranges. | Done | Local calendar dates keep weekly totals and date windows intuitive for the user. | Added a training overview alongside the existing goal-comparison charts. |
