@@ -13,8 +13,17 @@ export type ProgressTrendPoint = {
   pace: number | null;
 };
 
+export type ProgressDateRange = "30-days" | "90-days" | "all-time";
+
 const KG_PER_LB = 0.45359237;
 const KM_PER_MI = 1.609344;
+
+function localCalendarDate(date: Date) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
 
 function nameKey(name: string) {
   return name.trim().toLocaleLowerCase();
@@ -33,10 +42,23 @@ function round(value: number, decimals = 2) {
 export function localWeekStart(date = new Date()) {
   const monday = new Date(date.getFullYear(), date.getMonth(), date.getDate());
   monday.setDate(monday.getDate() - ((monday.getDay() + 6) % 7));
-  const year = monday.getFullYear();
-  const month = String(monday.getMonth() + 1).padStart(2, "0");
-  const day = String(monday.getDate()).padStart(2, "0");
-  return `${year}-${month}-${day}`;
+  return localCalendarDate(monday);
+}
+
+export function filterTrendPointsByDateRange(
+  points: ProgressTrendPoint[],
+  range: ProgressDateRange,
+  today = new Date(),
+): ProgressTrendPoint[] {
+  if (range === "all-time") return points;
+
+  const rangeDays = range === "30-days" ? 30 : 90;
+  const firstDate = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+  firstDate.setDate(firstDate.getDate() - (rangeDays - 1));
+  const firstDateString = localCalendarDate(firstDate);
+  const todayString = localCalendarDate(today);
+
+  return points.filter((point) => point.date >= firstDateString && point.date <= todayString);
 }
 
 export function getLiftNames(points: LiftHistoryPoint[]) {

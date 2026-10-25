@@ -31,6 +31,7 @@ after(async () => {
 
 test("progress overview shows weekly stats and selectable lift and run charts on mobile", async () => {
   const page = await browser.newPage({ viewport: { width: 320, height: 900 } });
+  await page.clock.install({ time: new Date("2026-10-25T23:30:00") });
   const overview = {
     stats: {
       workouts_this_week: 3,
@@ -123,6 +124,19 @@ test("progress overview shows weekly stats and selectable lift and run charts on
     await page.getByRole("region", { name: "Distance · mi chart" }).waitFor();
     await page.getByRole("region", { name: "Pace · min:sec / mi chart" }).waitFor();
     assert.match(await page.getByText("Add a lift or run goal to compare your training with a target.").textContent() ?? "", /Add a lift/);
+
+    const rangeSelector = page.getByLabel("Trend date range");
+    assert.equal(await rangeSelector.inputValue(), "all-time");
+    await rangeSelector.selectOption("30-days");
+    assert.match(
+      await page.getByRole("img", { name: /Top weight · lb over time/ }).getAttribute("aria-label") ?? "",
+      /Oct 20: 320\.8 lb/,
+    );
+    assert.match(
+      await page.getByRole("img", { name: /Distance · mi over time/ }).getAttribute("aria-label") ?? "",
+      /Oct 20: 8\.2 mi; Oct 23: 3\.1 mi/,
+    );
+    assert.equal(await page.locator(".progress-stat-card").nth(0).locator("strong").textContent(), "3");
 
     const dimensions = await page.evaluate(() => ({
       width: document.documentElement.clientWidth,

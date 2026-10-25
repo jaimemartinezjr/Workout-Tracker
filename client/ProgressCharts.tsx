@@ -17,10 +17,12 @@ import {
   type ProgressPoint,
 } from "./progressApi";
 import {
+  filterTrendPointsByDateRange,
   getLiftNames,
   liftTrendPoints,
   localWeekStart,
   runTrendPoints,
+  type ProgressDateRange,
   type ProgressTrendPoint,
 } from "./progressOverview";
 import "./progress.css";
@@ -217,6 +219,7 @@ export default function ProgressCharts({
   const [points, setPoints] = useState<ProgressPoint[]>([]);
   const [overview, setOverview] = useState<ProgressOverview | null>(null);
   const [selectedLift, setSelectedLift] = useState("");
+  const [dateRange, setDateRange] = useState<ProgressDateRange>("all-time");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [retryKey, setRetryKey] = useState(0);
@@ -225,12 +228,18 @@ export default function ProgressCharts({
     [overview],
   );
   const selectedLiftPoints = useMemo(
-    () => liftTrendPoints(overview?.lift_points ?? [], selectedLift, weightUnit),
-    [overview, selectedLift, weightUnit],
+    () => filterTrendPointsByDateRange(
+      liftTrendPoints(overview?.lift_points ?? [], selectedLift, weightUnit),
+      dateRange,
+    ),
+    [overview, selectedLift, weightUnit, dateRange],
   );
   const runningPoints = useMemo(
-    () => runTrendPoints(overview?.run_points ?? [], distanceUnit),
-    [overview, distanceUnit],
+    () => filterTrendPointsByDateRange(
+      runTrendPoints(overview?.run_points ?? [], distanceUnit),
+      dateRange,
+    ),
+    [overview, distanceUnit, dateRange],
   );
 
   useEffect(() => {
@@ -335,6 +344,21 @@ export default function ProgressCharts({
                   : "Log a run to start"}
               </span>
             </article>
+          </div>
+
+          <div className="progress-trend-controls">
+            <label className="progress-lift-select">
+              <span>Trend date range</span>
+              <select
+                aria-label="Trend date range"
+                value={dateRange}
+                onChange={(event) => setDateRange(event.target.value as ProgressDateRange)}
+              >
+                <option value="30-days">Last 30 days</option>
+                <option value="90-days">Last 90 days</option>
+                <option value="all-time">All time</option>
+              </select>
+            </label>
           </div>
 
           <div className="progress-trends-grid">

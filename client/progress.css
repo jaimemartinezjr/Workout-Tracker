@@ -85,6 +85,7 @@
 .progress-stat-label { color: var(--w-muted); font: 500 8px "DM Mono", monospace; letter-spacing: .1em; }
 .progress-stat-card strong { color: #dce6dc; font: 500 23px/1.15 "Space Grotesk", sans-serif; }
 .progress-stat-detail { overflow: hidden; color: #9fac9c; font-size: 10px; text-overflow: ellipsis; white-space: nowrap; }
+.progress-trend-controls { display: flex; justify-content: flex-end; margin: 0 0 10px; }
 .progress-trends-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(min(100%, 430px), 1fr));
@@ -134,4 +135,5 @@
   .progress-trend-card { padding: 13px; }
   .progress-trend-heading { align-items: flex-start; flex-direction: column; }
   .progress-lift-select { width: 100%; min-width: 0; }
+  .progress-trend-controls { justify-content: stretch; }
 }
