@@ -10,6 +10,7 @@
     "test:goals": "tsx --test server/goals.test.ts",
     "test:pace": "tsx --test client/pace.test.ts",
     "test:progress": "tsx --test server/progress.test.ts",
+    "test:progress-overview": "tsx --test client/progressOverview.test.ts tests/progress-overview.test.ts",
     "test:templates": "tsx --test server/templates.test.ts",
     "test:workout-filters": "tsx --test client/workoutFilters.test.ts",
     "test:workouts-search": "tsx --test tests/workouts-search.test.ts",

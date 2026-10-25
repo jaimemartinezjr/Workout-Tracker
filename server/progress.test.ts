@@ -18,6 +18,53 @@ class MemoryProgressDatabase implements ProgressDatabase {
   }
 }
 
+class MemoryProgressOverviewDatabase implements ProgressDatabase {
+  readonly queries: Array<{ text: string; values: unknown[] }> = [];
+
+  async query(text: string, values: unknown[] = []) {
+    this.queries.push({ text, values });
+    if (text.includes("AS workouts_this_week")) {
+      return {
+        rows: [{
+          workouts_this_week: "3",
+          heaviest_exercise_name: "Squat",
+          heaviest_weight_kg: "145.500",
+          heaviest_reps: 5,
+          heaviest_performed_on: "2026-10-21",
+          longest_run_distance_km: "13.250",
+          longest_run_performed_on: "2026-10-20",
+        }],
+        rowCount: 1,
+      };
+    }
+    if (text.includes("ls.set_number")) {
+      return {
+        rows: [{
+          workout_id: "lift-workout",
+          performed_on: "2026-10-21",
+          exercise_name: "Squat",
+          weight_kg: "145.500",
+          reps: 5,
+          set_number: 2,
+        }],
+        rowCount: 1,
+      };
+    }
+    if (text.includes("rd.pace_seconds_per_km")) {
+      return {
+        rows: [{
+          workout_id: "run-workout",
+          performed_on: "2026-10-20",
+          distance_km: "13.250",
+          pace_seconds_per_km: 330,
+        }],
+        rowCount: 1,
+      };
+    }
+    throw new Error(`Unexpected overview query: ${text}`);
+  }
+}
+
 async function withTestApp(
   database: ProgressDatabase,
   run: (baseUrl: string) => Promise<void>,
@@ -119,6 +166,74 @@ test("progress points normalize database values for lift and run charts", async 
         },
       ],
     });
+  });
+});
+
+test("overview returns owner-scoped weekly stats and normalized lift/run history", async () => {
+  const database = new MemoryProgressOverviewDatabase();
+  await withTestApp(database, async (baseUrl) => {
+    const response = await fetch(
+      `${baseUrl}/api/progress/overview?weekStart=2026-10-19`,
+      { headers: { "x-test-user-id": "user-a" } },
+    );
+    assert.equal(response.status, 200);
+    assert.deepEqual(await response.json(), {
+      stats: {
+        workouts_this_week: 3,
+        heaviest_set: {
+          exercise_name: "Squat",
+          weight_kg: 145.5,
+          reps: 5,
+          performed_on: "2026-10-21",
+        },
+        longest_run: {
+          distance_km: 13.25,
+          performed_on: "2026-10-20",
+        },
+      },
+      lift_points: [{
+        workout_id: "lift-workout",
+        performed_on: "2026-10-21",
+        exercise_name: "Squat",
+        weight_kg: 145.5,
+        reps: 5,
+        set_number: 2,
+      }],
+      run_points: [{
+        workout_id: "run-workout",
+        performed_on: "2026-10-20",
+        distance_km: 13.25,
+        pace_seconds_per_km: 330,
+      }],
+    });
+    assert.deepEqual(
+      database.queries.map(({ values }) => values),
+      [["user-a", "2026-10-19"], ["user-a"], ["user-a"]],
+    );
+    assert.ok(database.queries.every(({ text }) => /user_id = \$1/.test(text)));
+  });
+});
+
+test("overview validates week start and requires a signed-in user", async () => {
+  const database = new MemoryProgressOverviewDatabase();
+  await withTestApp(database, async (baseUrl) => {
+    const invalidDate = await fetch(
+      `${baseUrl}/api/progress/overview?weekStart=2026-02-31`,
+      { headers: { "x-test-user-id": "user-a" } },
+    );
+    assert.equal(invalidDate.status, 400);
+    assert.deepEqual(await invalidDate.json(), {
+      error: "Choose a valid week start date.",
+    });
+
+    const unauthenticated = await fetch(
+      `${baseUrl}/api/progress/overview?weekStart=2026-10-19`,
+    );
+    assert.equal(unauthenticated.status, 401);
+    assert.deepEqual(await unauthenticated.json(), {
+      error: "Sign in to view your progress.",
+    });
+    assert.equal(database.queries.length, 0);
   });
 });
 
