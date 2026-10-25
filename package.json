@@ -11,6 +11,8 @@
     "test:pace": "tsx --test client/pace.test.ts",
     "test:progress": "tsx --test server/progress.test.ts",
     "test:templates": "tsx --test server/templates.test.ts",
+    "test:workout-filters": "tsx --test client/workoutFilters.test.ts",
+    "test:workouts-search": "tsx --test tests/workouts-search.test.ts",
     "test:workouts-responsive": "tsx --test tests/workouts-responsive.test.ts",
     "start": "tsx server/index.ts"
   },
