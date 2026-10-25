@@ -235,6 +235,49 @@
   letter-spacing: -.04em;
 }
 .workouts-count { padding-bottom: 3px; font-size: 9px; letter-spacing: .08em; }
+.workout-history-filters {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  padding: 15px 18px 8px;
+}
+.workout-filter-field { display: grid; min-width: 0; gap: 5px; }
+.workout-filter-field > span {
+  color: var(--w-muted);
+  font: 500 8px "DM Mono", monospace;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+.workout-filter-field input, .workout-filter-field select {
+  width: 100%;
+  min-width: 0;
+  min-height: 36px;
+  padding: 8px 9px;
+  border: 1px solid #354137;
+  border-radius: 3px;
+  background: #111713;
+  color: var(--w-text);
+  font: 10px "DM Mono", monospace;
+}
+.workout-filter-field input::placeholder { color: #718075; }
+.workout-filter-field input[type="date"] { color-scheme: dark; }
+.workout-filter-search { grid-column: span 2; }
+.workout-filter-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 28px;
+  padding: 0 18px 11px;
+  color: var(--w-muted);
+  font-size: 9px;
+  line-height: 1.4;
+}
+.workout-filter-footer .workouts-text-button { flex: 0 0 auto; font-size: 9px !important; }
+.workouts-filter-empty { display: grid; gap: 8px; padding: 25px 22px; }
+.workouts-filter-empty h3 { margin: 0; color: var(--w-text); font: 500 16px "Space Grotesk", sans-serif; }
+.workouts-filter-empty p { margin: 0; color: var(--w-muted); font-size: 11px; line-height: 1.5; }
+.workouts-filter-empty .workouts-text-button { justify-self: start; margin-top: 4px; }
 .workout-list { margin: 0; padding: 0; list-style: none; }
 .workout-list li + li { border-top: 1px solid #29332c; }
 .workout-row {
@@ -431,6 +474,9 @@
   .template-editor-backdrop { align-items: start; padding: 10px; }
   .workouts-layout { padding-top: 18px; }
   .workouts-section-head { padding: 18px 15px 14px; }
+  .workout-history-filters { grid-template-columns: repeat(2, minmax(0, 1fr)); padding: 14px 15px 7px; }
+  .workout-filter-search { grid-column: 1 / -1; }
+  .workout-filter-footer { align-items: flex-start; padding: 0 15px 10px; }
   .workout-row { grid-template-columns: 17px 31px minmax(0, 1fr) 14px; gap: 9px; padding: 12px; }
   .workout-type-icon { width: 31px; height: 31px; }
   .workout-kind { display: none; }

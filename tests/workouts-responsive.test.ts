@@ -162,3 +162,91 @@ test("run correction messages wrap below their controls at 320px", async () => {
     await page.close();
   }
 });
+
+test("workout search and filters remain usable at 320px", async () => {
+  const page = await browser.newPage({ viewport: { width: 320, height: 900 } });
+  const workouts = [
+    {
+      id: "lift-heavy",
+      title: "Leg strength",
+      activity_type: "strength",
+      performed_on: "2026-10-20",
+      notes: null,
+      created_at: "2026-10-20T08:00:00.000Z",
+      exercise_names: ["Squat"],
+      max_weight_kg: 140,
+      distance_km: null,
+    },
+    {
+      id: "lift-upper",
+      title: "Upper body",
+      activity_type: "strength",
+      performed_on: "2026-10-23",
+      notes: null,
+      created_at: "2026-10-23T08:00:00.000Z",
+      exercise_names: ["Bench press"],
+      max_weight_kg: 100,
+      distance_km: null,
+    },
+    {
+      id: "run-long",
+      title: "Long run",
+      activity_type: "run",
+      performed_on: "2026-10-22",
+      notes: "Easy effort",
+      created_at: "2026-10-22T08:00:00.000Z",
+      exercise_names: [],
+      max_weight_kg: null,
+      distance_km: 12,
+    },
+  ];
+
+  try {
+    await page.route("**/api/workouts", (route) =>
+      route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({ workouts }),
+      }),
+    );
+    await page.goto(`${baseUrl}/tests/workouts-responsive.html`);
+    await page.getByRole("search", { name: "Search and filter sessions" }).waitFor();
+
+    await page.getByLabel("Exercise or workout").fill("sQuAt");
+    assert.deepEqual(
+      await page.locator(".workout-row-copy strong").allTextContents(),
+      ["Leg strength"],
+    );
+    assert.match(await page.locator(".workouts-count").textContent() ?? "", /^1 of 3/);
+
+    await page.getByLabel("Exercise or workout").fill("");
+    await page.getByLabel("Activity").selectOption("strength");
+    await page.getByLabel("Sort by").selectOption("weight");
+    assert.deepEqual(
+      await page.locator(".workout-row-copy strong").allTextContents(),
+      ["Leg strength", "Upper body"],
+    );
+
+    await page.getByLabel("Activity").selectOption("run");
+    await page.getByLabel("Sort by").selectOption("distance");
+    assert.deepEqual(
+      await page.locator(".workout-row-copy strong").allTextContents(),
+      ["Long run"],
+    );
+
+    const dimensions = await page.evaluate(() => ({
+      width: document.documentElement.clientWidth,
+      scrollWidth: document.documentElement.scrollWidth,
+      historyWidth: document.querySelector(".workout-history")?.clientWidth ?? 0,
+      historyScrollWidth: document.querySelector(".workout-history")?.scrollWidth ?? 0,
+    }));
+    assert.equal(dimensions.width, 320);
+    assert.ok(dimensions.scrollWidth <= dimensions.width, "History filters should not create horizontal page scrolling.");
+    assert.ok(
+      dimensions.historyScrollWidth <= dimensions.historyWidth + 1,
+      "History filters should fit inside the workout history panel.",
+    );
+  } finally {
+    await page.close();
+  }
+});

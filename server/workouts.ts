@@ -319,13 +319,35 @@ export function createWorkoutsRouter(
 
     try {
       const result = await database.query(
-        `SELECT id, title, activity_type, performed_on, notes, created_at
-         FROM workouts
-         WHERE user_id = $1
-         ORDER BY performed_on DESC, created_at DESC`,
+        `SELECT w.id, w.title, w.activity_type, w.performed_on, w.notes, w.created_at,
+                COALESCE(
+                  (SELECT ARRAY_AGG(DISTINCT ls.exercise_name ORDER BY ls.exercise_name)
+                   FROM lifting_sets ls
+                   WHERE ls.workout_id = w.id),
+                  ARRAY[]::text[]
+                ) AS exercise_names,
+                (SELECT MAX(ls.weight_kg)
+                 FROM lifting_sets ls
+                 WHERE ls.workout_id = w.id) AS max_weight_kg,
+                (SELECT rd.distance_km
+                 FROM run_details rd
+                 WHERE rd.workout_id = w.id) AS distance_km
+         FROM workouts w
+         WHERE w.user_id = $1
+         ORDER BY w.performed_on DESC, w.created_at DESC`,
         [userId],
       );
-      response.json({ workouts: result.rows });
+      response.json({
+        workouts: result.rows.map((row) => ({
+          ...row,
+          exercise_names: Array.isArray(row.exercise_names)
+            ? row.exercise_names.map(String)
+            : [],
+          max_weight_kg:
+            row.max_weight_kg == null ? null : Number(row.max_weight_kg),
+          distance_km: row.distance_km == null ? null : Number(row.distance_km),
+        })),
+      });
     } catch (error) {
       console.error("Could not load workouts.", error);
       response.status(500).json({
