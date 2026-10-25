@@ -18,19 +18,66 @@ type ItemRow = Record<string, unknown> & {
   position: number;
 };
 
+type StarRow = {
+  user_id: string;
+  template_id: string;
+  created_at: string;
+};
+
 class MemoryTemplatesDatabase implements TemplatesDatabase {
   readonly templates: TemplateRow[];
   readonly items: ItemRow[];
+  readonly stars: StarRow[];
   commits = 0;
   connects = 0;
 
-  constructor(templates: TemplateRow[] = [], items: ItemRow[] = []) {
+  constructor(
+    templates: TemplateRow[] = [],
+    items: ItemRow[] = [],
+    stars: StarRow[] = [],
+  ) {
     this.templates = templates;
     this.items = items;
+    this.stars = stars;
   }
 
   async query(text: string, values: unknown[] = []) {
     const sql = text.replace(/\s+/g, " ");
+    if (sql.includes("SELECT id FROM public.templates WHERE id = $1 AND user_id = $2")) {
+      const [id, userId] = values;
+      const template = this.templates.find(
+        (item) => item.id === id && item.user_id === userId,
+      );
+      return { rows: template ? [{ id: template.id }] : [], rowCount: template ? 1 : 0 };
+    }
+    if (sql.includes("INSERT INTO public.stars")) {
+      const [userId, templateId] = values;
+      const template = this.templates.find(
+        (item) => item.id === templateId && item.user_id === userId,
+      );
+      if (!template) return { rows: [], rowCount: 0 };
+      const alreadyStarred = this.stars.some(
+        (star) => star.user_id === userId && star.template_id === templateId,
+      );
+      if (!alreadyStarred) {
+        this.stars.push({
+          user_id: String(userId),
+          template_id: String(templateId),
+          created_at: "2026-10-24T00:00:00.000Z",
+        });
+      }
+      return { rows: [], rowCount: alreadyStarred ? 0 : 1 };
+    }
+    if (sql.includes("DELETE FROM public.stars")) {
+      const [userId, templateId] = values;
+      const originalLength = this.stars.length;
+      for (let index = this.stars.length - 1; index >= 0; index -= 1) {
+        if (this.stars[index].user_id === userId && this.stars[index].template_id === templateId) {
+          this.stars.splice(index, 1);
+        }
+      }
+      return { rows: [], rowCount: originalLength - this.stars.length };
+    }
     if (sql.includes("FROM public.template_items")) {
       const ownedTemplateIds = new Set(
         this.templates
@@ -46,7 +93,15 @@ class MemoryTemplatesDatabase implements TemplatesDatabase {
       return { rows, rowCount: rows.length };
     }
     if (sql.includes("FROM public.templates") && sql.includes("SELECT")) {
-      const rows = this.templates.filter((item) => item.user_id === values[0]);
+      const rows = this.templates
+        .filter((item) => item.user_id === values[0])
+        .map((template) => ({
+          ...template,
+          is_starred: this.stars.some(
+            (star) =>
+              star.user_id === template.user_id && star.template_id === template.id,
+          ),
+        }));
       return { rows, rowCount: rows.length };
     }
     if (sql.includes("DELETE FROM public.templates")) {
@@ -59,6 +114,11 @@ class MemoryTemplatesDatabase implements TemplatesDatabase {
       for (let itemIndex = this.items.length - 1; itemIndex >= 0; itemIndex -= 1) {
         if (this.items[itemIndex].template_id === template.id) {
           this.items.splice(itemIndex, 1);
+        }
+      }
+      for (let starIndex = this.stars.length - 1; starIndex >= 0; starIndex -= 1) {
+        if (this.stars[starIndex].template_id === template.id) {
+          this.stars.splice(starIndex, 1);
         }
       }
       return { rows: [{ id: template.id }], rowCount: 1 };
@@ -77,6 +137,17 @@ class MemoryTemplatesDatabase implements TemplatesDatabase {
           return { rows: [], rowCount: 0 };
         }
         if (sql === "ROLLBACK") return { rows: [], rowCount: 0 };
+        if (sql.includes("SELECT EXISTS") && sql.includes("FROM public.stars")) {
+          const [userId, templateId] = values;
+          return {
+            rows: [{
+              is_starred: this.stars.some(
+                (star) => star.user_id === userId && star.template_id === templateId,
+              ),
+            }],
+            rowCount: 1,
+          };
+        }
         if (sql.includes("INSERT INTO public.templates")) {
           const [id, userId, name, activityType] = values;
           const row: TemplateRow = {
@@ -355,6 +426,11 @@ test("owners can update a template and its ordered items without changing anothe
         planned_weight_kg: 80,
       },
     ],
+    [{
+      user_id: "user-a",
+      template_id: "template-a",
+      created_at: "2026-10-24T00:00:00.000Z",
+    }],
   );
   const updateInput = {
     name: "Updated upper body",
@@ -400,12 +476,14 @@ test("owners can update a template and its ordered items without changing anothe
         id: string;
         name: string;
         created_at: string;
+        is_starred: boolean;
         items: Array<{ position: number; exercise_name: string; planned_weight_kg: number }>;
       };
     };
     assert.equal(payload.template.id, "template-a");
     assert.equal(payload.template.name, "Updated upper body");
     assert.equal(payload.template.created_at, "2026-10-24T00:00:00.000Z");
+    assert.equal(payload.template.is_starred, true);
     assert.deepEqual(
       payload.template.items.map(({ position, exercise_name, planned_weight_kg }) => [
         position,
@@ -435,6 +513,7 @@ test("owners can update a template and its ordered items without changing anothe
       template: {
         name: string;
         activity_type: string;
+        is_starred: boolean;
         items: Array<{
           id: string;
           position: number;
@@ -449,6 +528,7 @@ test("owners can update a template and its ordered items without changing anothe
     };
     assert.equal(runPayload.template.name, "Updated running");
     assert.equal(runPayload.template.activity_type, "run");
+    assert.equal(runPayload.template.is_starred, true);
     assert.deepEqual(runPayload.template.items, [{
       id: runPayload.template.items[0].id,
       position: 1,
@@ -462,6 +542,105 @@ test("owners can update a template and its ordered items without changing anothe
     assert.equal(database.items.filter((item) => item.template_id === "template-a").length, 1);
     assert.ok(database.items.some((item) => item.id === "item-b1"));
     assert.equal(database.commits, 2);
+  });
+});
+
+test("users can star and unstar only their own templates", async () => {
+  const database = new MemoryTemplatesDatabase([
+    {
+      id: "template-a",
+      user_id: "user-a",
+      name: "Upper body",
+      activity_type: "strength",
+      created_at: "2026-10-24T00:00:00.000Z",
+    },
+    {
+      id: "template-b",
+      user_id: "user-b",
+      name: "Easy run",
+      activity_type: "run",
+      created_at: "2026-10-24T00:00:00.000Z",
+    },
+  ]);
+
+  await withTestApp(database, async (baseUrl) => {
+    const anonymousResponse = await fetch(`${baseUrl}/api/templates/template-a/star`, {
+      method: "PUT",
+    });
+    assert.equal(anonymousResponse.status, 401);
+
+    const headersA = { "x-test-user-id": "user-a" };
+    const headersB = { "x-test-user-id": "user-b" };
+    const otherUserResponse = await fetch(`${baseUrl}/api/templates/template-a/star`, {
+      method: "PUT",
+      headers: headersB,
+    });
+    assert.equal(otherUserResponse.status, 404);
+    assert.equal(database.stars.length, 0);
+
+    const starResponse = await fetch(`${baseUrl}/api/templates/template-a/star`, {
+      method: "PUT",
+      headers: headersA,
+    });
+    assert.equal(starResponse.status, 204);
+    const repeatStarResponse = await fetch(`${baseUrl}/api/templates/template-a/star`, {
+      method: "PUT",
+      headers: headersA,
+    });
+    assert.equal(repeatStarResponse.status, 204);
+    assert.equal(database.stars.length, 1);
+
+    const ownerListResponse = await fetch(`${baseUrl}/api/templates`, { headers: headersA });
+    const ownerPayload = await ownerListResponse.json() as {
+      templates: Array<{ id: string; is_starred: boolean }>;
+    };
+    assert.deepEqual(ownerPayload.templates, [
+      {
+        id: "template-a",
+        name: "Upper body",
+        activity_type: "strength",
+        created_at: "2026-10-24T00:00:00.000Z",
+        is_starred: true,
+        items: [],
+      },
+    ]);
+
+    const otherOwnerListResponse = await fetch(`${baseUrl}/api/templates`, { headers: headersB });
+    const otherOwnerPayload = await otherOwnerListResponse.json() as {
+      templates: Array<{ id: string; is_starred: boolean }>;
+    };
+    assert.equal(otherOwnerPayload.templates[0].id, "template-b");
+    assert.equal(otherOwnerPayload.templates[0].is_starred, false);
+
+    const forbiddenUnstarResponse = await fetch(`${baseUrl}/api/templates/template-a/star`, {
+      method: "DELETE",
+      headers: headersB,
+    });
+    assert.equal(forbiddenUnstarResponse.status, 404);
+    assert.equal(database.stars.length, 1);
+
+    const unstarResponse = await fetch(`${baseUrl}/api/templates/template-a/star`, {
+      method: "DELETE",
+      headers: headersA,
+    });
+    assert.equal(unstarResponse.status, 204);
+    const repeatUnstarResponse = await fetch(`${baseUrl}/api/templates/template-a/star`, {
+      method: "DELETE",
+      headers: headersA,
+    });
+    assert.equal(repeatUnstarResponse.status, 204);
+    assert.equal(database.stars.length, 0);
+
+    await fetch(`${baseUrl}/api/templates/template-a/star`, {
+      method: "PUT",
+      headers: headersA,
+    });
+    const deleteResponse = await fetch(`${baseUrl}/api/templates/template-a`, {
+      method: "DELETE",
+      headers: headersA,
+    });
+    assert.equal(deleteResponse.status, 204);
+    assert.equal(database.stars.length, 0);
   });
 });
 
