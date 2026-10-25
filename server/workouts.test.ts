@@ -92,13 +92,35 @@ async function withTestApp(
   }
 }
 
-test("a different user cannot see another user's workout in the list", async () => {
+test("User B cannot see or access User A's workout", async () => {
   await withTestApp(async (baseUrl) => {
-    const response = await fetch(`${baseUrl}/api/workouts`, {
-      headers: { "x-test-user-id": "user-b" },
-    });
-    assert.equal(response.status, 200);
-    assert.deepEqual(await response.json(), { workouts: [] });
+    const [listResponse, detailResponse] = await Promise.all([
+      fetch(`${baseUrl}/api/workouts`, {
+        headers: { "x-test-user-id": "user-b" },
+      }),
+      fetch(`${baseUrl}/api/workouts/${workoutA.id}`, {
+        headers: { "x-test-user-id": "user-b" },
+      }),
+    ]);
+    const [list, detail] = await Promise.all([
+      listResponse.json(),
+      detailResponse.json(),
+    ]);
+
+    assert.deepEqual(
+      {
+        listStatus: listResponse.status,
+        workouts: list.workouts,
+        detailStatus: detailResponse.status,
+        detail,
+      },
+      {
+        listStatus: 200,
+        workouts: [],
+        detailStatus: 404,
+        detail: { error: "Workout not found." },
+      },
+    );
   });
 });
 
@@ -122,16 +144,5 @@ test("an owner's workout list includes search and sort summaries", async () => {
         distance_km: null,
       }],
     });
-  });
-});
-
-test("a different user cannot open another user's workout by its known ID", async () => {
-  await withTestApp(async (baseUrl) => {
-    const response = await fetch(
-      `${baseUrl}/api/workouts/${workoutA.id}`,
-      { headers: { "x-test-user-id": "user-b" } },
-    );
-    assert.equal(response.status, 404);
-    assert.deepEqual(await response.json(), { error: "Workout not found." });
   });
 });
