@@ -10,15 +10,20 @@ import {
 import GoalsPanel from "./GoalsPanel";
 import TemplatesPanel from "./TemplatesPanel";
 import {
+  filterAndSortWorkouts,
+  type WorkoutActivityFilter,
+  type WorkoutSort,
+} from "./workoutFilters";
+import {
   deleteWorkout,
   getWorkout,
   listWorkouts,
   saveWorkout,
   type ActivityType,
   type LiftingSet,
-  type Workout,
   type WorkoutDetail,
   type WorkoutInput,
+  type WorkoutListItem,
 } from "./workoutsApi";
 import type { WorkoutTemplate } from "./templatesApi";
 import "./workouts.css";
@@ -194,7 +199,12 @@ export default function Workouts({
   onWeightUnitChange,
   onDistanceUnitChange,
 }: Props) {
-  const [workouts, setWorkouts] = useState<Workout[]>([]);
+  const [workouts, setWorkouts] = useState<WorkoutListItem[]>([]);
+  const [historySearch, setHistorySearch] = useState("");
+  const [historyActivity, setHistoryActivity] = useState<WorkoutActivityFilter>("all");
+  const [historyFrom, setHistoryFrom] = useState("");
+  const [historyTo, setHistoryTo] = useState("");
+  const [historySort, setHistorySort] = useState<WorkoutSort>("newest");
   const [listLoading, setListLoading] = useState(true);
   const [listError, setListError] = useState("");
   const [activeDetail, setActiveDetail] = useState<WorkoutDetail | null>(null);
@@ -278,10 +288,46 @@ export default function Workouts({
     }
   };
 
-  const sortedWorkouts = useMemo(
-    () => [...workouts].sort((a, b) => b.performed_on.localeCompare(a.performed_on)),
-    [workouts],
+  const filteredWorkouts = useMemo(
+    () => filterAndSortWorkouts(workouts, {
+      query: historySearch,
+      activity: historyActivity,
+      dateFrom: historyFrom,
+      dateTo: historyTo,
+      sort: historySort,
+    }),
+    [workouts, historySearch, historyActivity, historyFrom, historyTo, historySort],
   );
+  const hasHistoryFilters = Boolean(
+    historySearch.trim() ||
+    historyActivity !== "all" ||
+    historyFrom ||
+    historyTo ||
+    historySort !== "newest"
+  );
+
+  const clearHistoryFilters = () => {
+    setHistorySearch("");
+    setHistoryActivity("all");
+    setHistoryFrom("");
+    setHistoryTo("");
+    setHistorySort("newest");
+  };
+
+  const changeHistoryActivity = (activity: WorkoutActivityFilter) => {
+    setHistoryActivity(activity);
+    setHistorySort("newest");
+  };
+
+  const changeHistoryFrom = (date: string) => {
+    setHistoryFrom(date);
+    if (date && historyTo && date > historyTo) setHistoryTo(date);
+  };
+
+  const changeHistoryTo = (date: string) => {
+    setHistoryTo(date);
+    if (date && historyFrom && date < historyFrom) setHistoryFrom(date);
+  };
 
   const refresh = useCallback(async () => {
     setListLoading(true);
@@ -647,8 +693,95 @@ export default function Workouts({
               <span className="workouts-overline">YOUR RECORD</span>
               <h2 id="history-title">Sessions</h2>
             </div>
-            <span className="workouts-count">{workouts.length} {workouts.length === 1 ? "entry" : "entries"}</span>
+            <span className="workouts-count">
+              {filteredWorkouts.length} of {workouts.length} {workouts.length === 1 ? "session" : "sessions"}
+            </span>
           </div>
+
+          {!listLoading && !listError && workouts.length > 0 && (
+            <>
+              <div className="workout-history-filters" role="search" aria-label="Search and filter sessions">
+                <label className="workout-filter-field workout-filter-search">
+                  <span>Exercise or workout</span>
+                  <input
+                    type="search"
+                    value={historySearch}
+                    onChange={(event) => setHistorySearch(event.target.value)}
+                    placeholder="e.g. squat or easy run"
+                  />
+                </label>
+                <label className="workout-filter-field">
+                  <span>Activity</span>
+                  <select
+                    value={historyActivity}
+                    onChange={(event) => changeHistoryActivity(event.target.value as WorkoutActivityFilter)}
+                  >
+                    <option value="all">All activity</option>
+                    <option value="strength">Strength</option>
+                    <option value="run">Running</option>
+                  </select>
+                </label>
+                <label className="workout-filter-field">
+                  <span>From</span>
+                  <input
+                    type="date"
+                    value={historyFrom}
+                    max={historyTo || undefined}
+                    onChange={(event) => changeHistoryFrom(event.target.value)}
+                  />
+                </label>
+                <label className="workout-filter-field">
+                  <span>To</span>
+                  <input
+                    type="date"
+                    value={historyTo}
+                    min={historyFrom || undefined}
+                    onChange={(event) => changeHistoryTo(event.target.value)}
+                  />
+                </label>
+                <label className="workout-filter-field">
+                  <span>Sort by</span>
+                  <select
+                    value={historySort}
+                    onChange={(event) => setHistorySort(event.target.value as WorkoutSort)}
+                  >
+                    <option value="newest">Newest first</option>
+                    <option value="oldest">Oldest first</option>
+                    {historyActivity === "strength" && (
+                      <>
+                        <option value="highest-weight">Highest weight</option>
+                        <option value="lowest-weight">Lowest weight</option>
+                      </>
+                    )}
+                    {historyActivity === "run" && (
+                      <>
+                        <option value="farthest">Farthest distance</option>
+                        <option value="shortest">Shortest distance</option>
+                      </>
+                    )}
+                  </select>
+                </label>
+              </div>
+              <div className="workout-filter-footer">
+                <span>
+                  {historyActivity === "all"
+                    ? "Choose Strength or Running to sort by weight or distance."
+                    : historyActivity === "strength"
+                      ? "Weight sorts use the lightest or heaviest recorded set."
+                      : "Distance sorts rank runs by total distance."}
+                </span>
+                {hasHistoryFilters && (
+                  <button
+                    className="workouts-text-button"
+                    type="button"
+                    onClick={clearHistoryFilters}
+                  >
+                    Clear filters
+                  </button>
+                )}
+              </div>
+            </>
+          )}
 
           {listLoading ? (
             <div className="workouts-state" aria-live="polite">
@@ -665,7 +798,7 @@ export default function Workouts({
               <p>{listError}</p>
               <button className="workouts-button workouts-button-quiet" type="button" onClick={() => void refresh()}>Try again</button>
             </div>
-          ) : sortedWorkouts.length === 0 ? (
+          ) : workouts.length === 0 ? (
             <div className="workouts-empty">
               <span className="workouts-empty-index">01 / BEGIN</span>
               <div className="workouts-empty-mark" aria-hidden="true"><span /><span /><span /></div>
@@ -673,9 +806,17 @@ export default function Workouts({
               <p>Log a lift or a run, then come back to see your training history take shape.</p>
               <button className="workouts-button workouts-button-primary" type="button" onClick={startNew}>Log your first session</button>
             </div>
+          ) : filteredWorkouts.length === 0 ? (
+            <div className="workouts-filter-empty" role="status">
+              <h3>No matching sessions.</h3>
+              <p>Try changing the search, date range, or activity filter.</p>
+              <button className="workouts-text-button" type="button" onClick={clearHistoryFilters}>
+                Clear filters
+              </button>
+            </div>
           ) : (
             <ul className="workout-list">
-              {sortedWorkouts.map((workout, index) => (
+              {filteredWorkouts.map((workout, index) => (
                 <li key={workout.id}>
                   <button
                     className={`workout-row${activeDetail?.workout.id === workout.id ? " is-selected" : ""}`}
