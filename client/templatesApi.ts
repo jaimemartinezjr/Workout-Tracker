@@ -16,6 +16,7 @@ export type WorkoutTemplate = {
   name: string;
   activity_type: ActivityType;
   created_at: string;
+  is_starred: boolean;
   items: TemplateItem[];
 };
 
@@ -103,5 +104,17 @@ export function deleteTemplate(getToken: GetToken, id: string): Promise<void> {
     getToken,
     `/api/templates/${encodeURIComponent(id)}`,
     { method: "DELETE" },
+  );
+}
+
+export function setTemplateStar(
+  getToken: GetToken,
+  id: string,
+  starred: boolean,
+): Promise<void> {
+  return request(
+    getToken,
+    `/api/templates/${encodeURIComponent(id)}/star`,
+    { method: starred ? "PUT" : "DELETE" },
   );
 }

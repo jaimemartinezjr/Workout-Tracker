@@ -47,6 +47,11 @@ type ValidationResult =
   | { ok: false; error: string };
 
 const templateColumns = "id, name, activity_type, created_at";
+const templateListColumns = `t.id, t.name, t.activity_type, t.created_at,
+  EXISTS (
+    SELECT 1 FROM public.stars s
+    WHERE s.user_id = $1 AND s.template_id = t.id
+  ) AS is_starred`;
 const templateItemColumns = `ti.id, ti.template_id, ti.position, ti.exercise_name, ti.planned_sets,
   ti.planned_reps, ti.planned_weight_kg, ti.planned_distance_km, ti.planned_pace_seconds_per_km`;
 
@@ -176,6 +181,7 @@ function normalizeCreatedTemplate(
   row: Record<string, unknown>,
   input: TemplateInput,
   itemIds: string[],
+  isStarred = false,
 ) {
   const items = input.activity_type === "strength"
     ? input.items.map((item, index) => ({
@@ -204,6 +210,7 @@ function normalizeCreatedTemplate(
     name: String(row.name),
     activity_type: row.activity_type,
     created_at: row.created_at,
+    is_starred: isStarred,
     items,
   };
 }
@@ -263,10 +270,10 @@ export function createTemplatesRouter(
 
     try {
       const templatesResult = await database.query(
-        `SELECT ${templateColumns}
-         FROM public.templates
-         WHERE user_id = $1
-         ORDER BY created_at DESC, id`,
+        `SELECT ${templateListColumns}
+         FROM public.templates t
+         WHERE t.user_id = $1
+         ORDER BY t.created_at DESC, t.id`,
         [userId],
       );
       if (!templatesResult.rows.length) {
@@ -296,6 +303,7 @@ export function createTemplatesRouter(
           name: String(row.name),
           activity_type: row.activity_type,
           created_at: row.created_at,
+          is_starred: row.is_starred === true,
           items: itemsByTemplate.get(String(row.id)) ?? [],
         })),
       });
@@ -397,6 +405,15 @@ export function createTemplatesRouter(
         return;
       }
 
+      const starResult = await client.query(
+        `SELECT EXISTS (
+           SELECT 1 FROM public.stars
+           WHERE user_id = $1 AND template_id = $2
+         ) AS is_starred`,
+        [userId, templateId],
+      );
+      const isStarred = starResult.rows[0]?.is_starred === true;
+
       await client.query(
         "DELETE FROM public.template_items WHERE template_id = $1",
         [templateId],
@@ -405,7 +422,7 @@ export function createTemplatesRouter(
       await client.query("COMMIT");
       transactionStarted = false;
       response.json({
-        template: normalizeCreatedTemplate(template, validation.value, itemIds),
+        template: normalizeCreatedTemplate(template, validation.value, itemIds, isStarred),
       });
     } catch (error) {
       if (client && transactionStarted) {
@@ -421,6 +438,68 @@ export function createTemplatesRouter(
       });
     } finally {
       client?.release();
+    }
+  });
+
+  router.put("/:id/star", async (request, response) => {
+    const userId = resolveUserId(request);
+    if (!userId) {
+      respondUnauthenticated(response);
+      return;
+    }
+
+    try {
+      const ownedTemplate = await database.query(
+        "SELECT id FROM public.templates WHERE id = $1 AND user_id = $2",
+        [request.params.id, userId],
+      );
+      if (!ownedTemplate.rows[0]) {
+        response.status(404).json({ error: "Template not found." });
+        return;
+      }
+
+      await database.query(
+        `INSERT INTO public.stars (user_id, template_id)
+         VALUES ($1, $2)
+         ON CONFLICT (user_id, template_id) DO NOTHING`,
+        [userId, request.params.id],
+      );
+      response.status(204).end();
+    } catch (error) {
+      console.error("Could not star template.", error);
+      response.status(500).json({
+        error: "We couldn't star this template. Please try again.",
+      });
+    }
+  });
+
+  router.delete("/:id/star", async (request, response) => {
+    const userId = resolveUserId(request);
+    if (!userId) {
+      respondUnauthenticated(response);
+      return;
+    }
+
+    try {
+      const ownedTemplate = await database.query(
+        "SELECT id FROM public.templates WHERE id = $1 AND user_id = $2",
+        [request.params.id, userId],
+      );
+      if (!ownedTemplate.rows[0]) {
+        response.status(404).json({ error: "Template not found." });
+        return;
+      }
+
+      await database.query(
+        "DELETE FROM public.stars WHERE user_id = $1 AND template_id = $2",
+        [userId, request.params.id],
+      );
+      response.status(204).end();
+    } catch (error) {
+      console.error("Could not unstar template.", error);
+      response.status(500).json({
+        error: "We couldn't update this template. Please try again.",
+      });
     }
   });
 

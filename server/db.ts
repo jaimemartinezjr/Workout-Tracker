@@ -17,9 +17,10 @@ export async function initializeDatabase() {
     try {
       await pool.query("SELECT 1 FROM public.templates LIMIT 0");
       await pool.query("SELECT 1 FROM public.template_items LIMIT 0");
+      await pool.query("SELECT 1 FROM public.stars LIMIT 0");
     } catch {
       throw new Error(
-        "Production database is missing workout templates. Apply server/migrations/005_templates.sql before starting this release.",
+        "Production database is missing workout template tables. Re-publish this app so Replit can sync the development schema.",
       );
     }
     const paceColumn = await pool.query(
@@ -34,7 +35,7 @@ export async function initializeDatabase() {
       Number(paceColumn.rows[0]?.numeric_scale) < 4
     ) {
       throw new Error(
-        "Production database is missing fractional goal pace support. Apply server/migrations/004_goals_fractional_pace.sql before starting this release.",
+        "Production database is missing fractional goal pace support. Re-publish this app so Replit can sync the development schema.",
       );
     }
     return;
@@ -71,4 +72,9 @@ export async function initializeDatabase() {
     "utf8",
   );
   await pool.query(templatesSchema);
+  const starsSchema = await readFile(
+    new URL("./migrations/006_stars.sql", import.meta.url),
+    "utf8",
+  );
+  await pool.query(starsSchema);
 }

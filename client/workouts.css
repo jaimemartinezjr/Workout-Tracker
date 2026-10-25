@@ -54,6 +54,31 @@
 .templates-heading h2 { margin: 5px 0 0; font: 500 23px/1.12 "Space Grotesk", sans-serif; letter-spacing: -.04em; }
 .templates-heading .workouts-button { white-space: nowrap; }
 .templates-section .workouts-button-primary { min-height: 34px; padding: 8px 11px; font-size: 11px; }
+.template-view-switch {
+  display: inline-flex;
+  gap: 3px;
+  margin: 0 0 13px;
+  padding: 3px;
+  border: 1px solid var(--w-line);
+  border-radius: 5px;
+  background: #101612;
+}
+.template-view-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 7px 10px;
+  border: 0;
+  border-radius: 3px;
+  background: transparent;
+  color: var(--w-muted);
+  cursor: pointer;
+  font: 500 10px "DM Mono", monospace;
+}
+.template-view-button[aria-pressed="true"] { background: #253022; color: var(--w-text); }
+.template-view-button span { color: #9dae9f; font-size: 9px; }
+.template-view-button[aria-pressed="true"] span { color: #b4f36a; }
+.template-view-button:focus-visible, .template-star-button:focus-visible { outline: 2px solid #b4f36a; outline-offset: 2px; }
 .templates-section .workouts-text-button.is-danger { color: #efa99c; }
 .templates-section .workouts-text-button.is-danger:hover { color: #ffd0c6; }
 .template-list { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr)); gap: 10px; }
@@ -74,8 +99,23 @@
 .template-type.run { color: #9cd2bd; }
 .template-card h3 { overflow: hidden; margin: 5px 0 4px; color: var(--w-text); font: 500 14px "Space Grotesk", sans-serif; text-overflow: ellipsis; white-space: nowrap; }
 .template-card p { margin: 0; color: var(--w-muted); font: 10px/1.45 "DM Mono", monospace; }
-.template-card-actions { display: flex; flex: 0 0 auto; align-items: center; gap: 11px; }
+.template-card-actions { display: flex; flex: 0 0 auto; flex-wrap: wrap; align-items: center; gap: 11px; }
 .template-card-actions .workouts-text-button { font-size: 10px !important; }
+.template-star-button {
+  display: grid;
+  width: 30px;
+  height: 30px;
+  place-items: center;
+  border: 1px solid #344137;
+  border-radius: 4px;
+  background: transparent;
+  color: #91a093;
+  cursor: pointer;
+  font-size: 17px;
+  line-height: 1;
+}
+.template-star-button:hover, .template-star-button.is-starred { border-color: #607d40; color: #b4f36a; }
+.template-star-button:disabled { cursor: wait; opacity: .55; }
 .templates-message { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: 0; color: var(--w-muted); font-size: 11px; line-height: 1.55; }
 .templates-message.is-error { color: #f2a79b; }
 .template-editor-backdrop {

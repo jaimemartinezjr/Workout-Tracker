@@ -4,6 +4,7 @@ import {
   createTemplate,
   deleteTemplate,
   listTemplates,
+  setTemplateStar,
   updateTemplate,
   type TemplateInput,
   type WorkoutTemplate,
@@ -271,6 +272,9 @@ export default function TemplatesPanel({
   const [saving, setSaving] = useState(false);
   const [isFromWorkout, setIsFromWorkout] = useState(false);
   const [editingTemplateId, setEditingTemplateId] = useState<string | null>(null);
+  const [view, setView] = useState<"all" | "starred">("all");
+  const [updatingStarIds, setUpdatingStarIds] = useState<Set<string>>(() => new Set());
+  const [actionError, setActionError] = useState("");
 
   const refresh = useCallback(async () => {
     setLoading(true);
@@ -378,6 +382,7 @@ export default function TemplatesPanel({
       setTemplates((current) => editingTemplateId
         ? current.map((item) => item.id === saved.id ? saved : item)
         : [saved, ...current.filter((item) => item.id !== saved.id)]);
+      if (!editingTemplateId) setView("all");
       setEditorOpen(false);
       setEditingTemplateId(null);
     } catch (error) {
@@ -401,6 +406,33 @@ export default function TemplatesPanel({
       );
     }
   };
+
+  const toggleTemplateStar = async (template: WorkoutTemplate) => {
+    const starred = !template.is_starred;
+    setActionError("");
+    setUpdatingStarIds((current) => new Set(current).add(template.id));
+    try {
+      await setTemplateStar(getToken, template.id, starred);
+      setTemplates((current) => current.map((item) =>
+        item.id === template.id ? { ...item, is_starred: starred } : item
+      ));
+    } catch (error) {
+      setActionError(
+        error instanceof Error ? error.message : "We couldn't update this template. Please try again.",
+      );
+    } finally {
+      setUpdatingStarIds((current) => {
+        const next = new Set(current);
+        next.delete(template.id);
+        return next;
+      });
+    }
+  };
+
+  const starredCount = templates.filter((template) => template.is_starred).length;
+  const visibleTemplates = view === "starred"
+    ? templates.filter((template) => template.is_starred)
+    : templates;
 
   return (
     <section className="templates-section" aria-labelledby="templates-title">
@@ -427,13 +459,40 @@ export default function TemplatesPanel({
         </div>
       )}
 
+      {actionError && (
+        <p className="templates-message is-error" role="alert">{actionError}</p>
+      )}
+
+      {!loading && templates.length > 0 && (
+        <div className="template-view-switch" role="group" aria-label="Template view">
+          <button
+            type="button"
+            className="template-view-button"
+            aria-pressed={view === "all"}
+            onClick={() => setView("all")}
+          >
+            All <span>{templates.length}</span>
+          </button>
+          <button
+            type="button"
+            className="template-view-button"
+            aria-pressed={view === "starred"}
+            onClick={() => setView("starred")}
+          >
+            Starred <span>{starredCount}</span>
+          </button>
+        </div>
+      )}
+
       {loading ? (
         <p className="templates-message" aria-live="polite">Loading your templates…</p>
       ) : templates.length === 0 ? (
         <p className="templates-message">Create one here or save a completed session to reuse it next time.</p>
+      ) : visibleTemplates.length === 0 ? (
+        <p className="templates-message">No starred templates yet. Star a routine to find it here.</p>
       ) : (
         <div className="template-list">
-          {templates.map((template) => (
+          {visibleTemplates.map((template) => (
             <article className="template-card" key={template.id}>
               <div className="template-card-copy">
                 <span className={`template-type ${template.activity_type}`}>
@@ -443,6 +502,17 @@ export default function TemplatesPanel({
                 <p>{templateSummary(template, weightUnit, distanceUnit)}</p>
               </div>
               <div className="template-card-actions">
+                <button
+                  className={`template-star-button${template.is_starred ? " is-starred" : ""}`}
+                  type="button"
+                  onClick={() => void toggleTemplateStar(template)}
+                  disabled={updatingStarIds.has(template.id)}
+                  aria-label={`${template.is_starred ? "Remove" : "Add"} ${template.name} ${template.is_starred ? "from" : "to"} starred templates`}
+                  aria-pressed={template.is_starred}
+                  title={template.is_starred ? "Remove from Starred" : "Add to Starred"}
+                >
+                  <span aria-hidden="true">{template.is_starred ? "★" : "☆"}</span>
+                </button>
                 <button
                   className="workouts-button workouts-button-primary"
                   type="button"
