@@ -27,7 +27,7 @@ export type LiftingSet = {
 export type RunDetails = {
   distance_km: number;
   pace_seconds_per_km: number;
-  calories: number;
+  calories: number | null;
 };
 
 export type WorkoutDetail = {

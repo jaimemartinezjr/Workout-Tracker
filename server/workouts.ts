@@ -29,7 +29,7 @@ type LiftingSetInput = {
 type RunDetailsInput = {
   distance_km: number;
   pace_seconds_per_km: number;
-  calories: number;
+  calories: number | null;
 };
 
 type WorkoutInput = {
@@ -41,28 +41,35 @@ type WorkoutInput = {
   runDetails?: RunDetailsInput;
 };
 
-type ValidationResult =
+export type ValidationResult =
   | { ok: true; value: WorkoutInput }
   | { ok: false; error: string };
 
-function validateWorkout(body: unknown): ValidationResult {
+export function validateWorkout(body: unknown): ValidationResult {
   if (!body || typeof body !== "object" || Array.isArray(body)) {
     return { ok: false, error: "Enter the workout details before saving." };
   }
 
   const input = body as Record<string, unknown>;
-  const title = typeof input.title === "string" ? input.title.trim() : "";
-  if (!title || title.length > 120) {
-    return {
-      ok: false,
-      error: "Enter a workout title (up to 120 characters).",
-    };
-  }
-
   const activityType = input.activity_type;
   if (activityType !== "strength" && activityType !== "run") {
     return { ok: false, error: "Choose strength or running for this workout." };
   }
+
+  if (input.title != null && typeof input.title !== "string") {
+    return { ok: false, error: "Enter a valid session name." };
+  }
+  const enteredTitle =
+    typeof input.title === "string" ? input.title.trim() : "";
+  if (enteredTitle.length > 120) {
+    return {
+      ok: false,
+      error: "Session names must be 120 characters or fewer.",
+    };
+  }
+  const title =
+    enteredTitle ||
+    (activityType === "strength" ? "Strength session" : "Run session");
 
   const performedOn =
     typeof input.performed_on === "string" ? input.performed_on : "";
@@ -146,7 +153,7 @@ function validateWorkout(body: unknown): ValidationResult {
   if (!input.runDetails || typeof input.runDetails !== "object") {
     return {
       ok: false,
-      error: "Enter distance, pace, and calories for this run.",
+      error: "Enter distance and pace for this run.",
     };
   }
 
@@ -167,7 +174,14 @@ function validateWorkout(body: unknown): ValidationResult {
       error: "Enter a valid pace greater than zero seconds per kilometer.",
     };
   }
-  if (!Number.isInteger(runDetails.calories) || Number(runDetails.calories) < 0) {
+  const rawCalories = runDetails.calories;
+  const calories = rawCalories == null ? null : rawCalories;
+  if (
+    calories !== null &&
+    (typeof calories !== "number" ||
+      !Number.isInteger(calories) ||
+      calories < 0)
+  ) {
     return {
       ok: false,
       error: "Enter a valid calorie count of zero or more.",
@@ -184,7 +198,7 @@ function validateWorkout(body: unknown): ValidationResult {
       runDetails: {
         distance_km: runDetails.distance_km,
         pace_seconds_per_km: Number(runDetails.pace_seconds_per_km),
-        calories: Number(runDetails.calories),
+        calories,
       },
     },
   };

@@ -37,3 +37,17 @@ test("converts mile pace to canonical per-kilometer pace and back", () => {
   assert.equal(paceToSecondsPerKm(510, "km"), 510);
   assert.equal(paceFromSecondsPerKm(510, "km"), 510);
 });
+
+test("session pace input keeps min:sec precision through unit conversion", () => {
+  const inputSeconds = parsePaceInput("8:30");
+  assert.equal(inputSeconds, 510);
+  const secondsPerKm = paceToSecondsPerKm(inputSeconds!, "mi");
+  assert.equal(
+    formatPaceInput(paceFromSecondsPerKm(secondsPerKm, "mi")),
+    "8:30",
+  );
+  assert.equal(
+    formatPaceInput(paceFromSecondsPerKm(paceToSecondsPerKm(510, "mi"), "km")),
+    "5:17",
+  );
+});

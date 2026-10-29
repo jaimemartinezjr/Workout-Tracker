@@ -29,7 +29,7 @@ There is no live URL yet. Replit currently reports that this project has no acti
 
 ## Database setup
 
-Replit provides a managed PostgreSQL database for development and supplies its private `DATABASE_URL` to the server. On startup in development, the server creates the `users` table if it is missing and applies the idempotent migrations in `server/migrations/` for workouts, goals, and fractional-second precision for run-goal pace.
+Replit provides a managed PostgreSQL database for development and supplies its private `DATABASE_URL` to the server. On startup in development, the server creates the `users` table if it is missing and applies the idempotent migrations in `server/migrations/` for workouts, goals, templates, stars, fractional-second goal pace, and optional run calories.
 
 Production startup checks that the expected tables and fractional-precision goal pace column exist; it never applies migrations. For production schema changes, merge the code so the development schema is current, then use Replit's Publish flow to review and apply its development-to-production schema diff before the updated app is released. Do not connect a development process to production or copy a development database URL into production.
 

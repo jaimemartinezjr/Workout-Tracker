@@ -2,7 +2,11 @@ import assert from "node:assert/strict";
 import { once } from "node:events";
 import express from "express";
 import { test } from "node:test";
-import { createWorkoutsRouter, type WorkoutDatabase } from "./workouts.js";
+import {
+  createWorkoutsRouter,
+  validateWorkout,
+  type WorkoutDatabase,
+} from "./workouts.js";
 
 const workoutA = {
   id: "workout-owned-by-a",
@@ -145,4 +149,65 @@ test("an owner's workout list includes search and sort summaries", async () => {
       }],
     });
   });
+});
+
+test("a blank session name gets an activity-specific default", () => {
+  const strength = validateWorkout({
+    title: " ",
+    activity_type: "strength",
+    performed_on: "2026-10-20",
+    sets: [{
+      exercise_name: "Squat",
+      set_number: 1,
+      weight_kg: 100,
+      reps: 5,
+    }],
+  });
+  const run = validateWorkout({
+    title: "",
+    activity_type: "run",
+    performed_on: "2026-10-20",
+    runDetails: {
+      distance_km: 5,
+      pace_seconds_per_km: 330,
+    },
+  });
+
+  assert.equal(strength.ok, true);
+  assert.equal(strength.ok && strength.value.title, "Strength session");
+  assert.equal(run.ok, true);
+  assert.equal(run.ok && run.value.title, "Run session");
+});
+
+test("run calories are optional while zero remains a valid value", () => {
+  const withoutCalories = validateWorkout({
+    title: "",
+    activity_type: "run",
+    performed_on: "2026-10-20",
+    runDetails: {
+      distance_km: 5,
+      pace_seconds_per_km: 330,
+    },
+  });
+  const withZeroCalories = validateWorkout({
+    title: "Easy run",
+    activity_type: "run",
+    performed_on: "2026-10-20",
+    runDetails: {
+      distance_km: 5,
+      pace_seconds_per_km: 330,
+      calories: 0,
+    },
+  });
+
+  assert.equal(withoutCalories.ok, true);
+  assert.equal(
+    withoutCalories.ok && withoutCalories.value.runDetails?.calories,
+    null,
+  );
+  assert.equal(withZeroCalories.ok, true);
+  assert.equal(
+    withZeroCalories.ok && withZeroCalories.value.runDetails?.calories,
+    0,
+  );
 });

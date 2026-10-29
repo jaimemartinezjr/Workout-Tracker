@@ -38,6 +38,18 @@ export async function initializeDatabase() {
         "Production database is missing fractional goal pace support. Re-publish this app so Replit can sync the development schema.",
       );
     }
+    const runCaloriesColumn = await pool.query(
+      `SELECT is_nullable
+       FROM information_schema.columns
+       WHERE table_schema = 'public'
+         AND table_name = 'run_details'
+         AND column_name = 'calories'`,
+    );
+    if (runCaloriesColumn.rows[0]?.is_nullable !== "YES") {
+      throw new Error(
+        "Production database does not yet support optional run calories. Re-publish this app so Replit can sync the development schema.",
+      );
+    }
     return;
   }
 
@@ -77,4 +89,9 @@ export async function initializeDatabase() {
     "utf8",
   );
   await pool.query(starsSchema);
+  const optionalRunCaloriesSchema = await readFile(
+    new URL("./migrations/007_optional_run_calories.sql", import.meta.url),
+    "utf8",
+  );
+  await pool.query(optionalRunCaloriesSchema);
 }
