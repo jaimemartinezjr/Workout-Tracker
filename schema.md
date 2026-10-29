@@ -16,7 +16,7 @@ The app stores its data in the PostgreSQL `public` schema. User IDs are the text
 
 - `id TEXT` — primary key.
 - `user_id TEXT NOT NULL` — foreign key to `users.id`; deleting a user deletes their workouts.
-- `title TEXT NOT NULL` — 1–120 non-whitespace characters.
+- `title TEXT NOT NULL` — 1–120 non-whitespace characters; if the user leaves the session name blank, the server stores `Strength session` or `Run session`.
 - `activity_type TEXT NOT NULL` — `strength` or `run`.
 - `performed_on DATE NOT NULL` — local calendar date recorded for the workout.
 - `notes TEXT` — optional, up to 2,000 characters.
@@ -37,7 +37,7 @@ The app stores its data in the PostgreSQL `public` schema. User IDs are the text
 - `workout_id TEXT` — both primary key and foreign key to `workouts.id`; deleting a workout deletes its run details.
 - `distance_km NUMERIC(8, 3) NOT NULL` — positive distance in kilometers.
 - `pace_seconds_per_km INTEGER NOT NULL` — positive pace in seconds per kilometer.
-- `calories INTEGER NOT NULL` — non-negative calories.
+- `calories INTEGER` — optional, non-negative calories for a run.
 
 Because `workout_id` is the primary key, a workout can have at most one run-details row.
 

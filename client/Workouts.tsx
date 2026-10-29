@@ -25,6 +25,12 @@ import {
   type WorkoutInput,
   type WorkoutListItem,
 } from "./workoutsApi";
+import {
+  formatPaceInput,
+  paceFromSecondsPerKm,
+  paceToSecondsPerKm,
+  parsePaceInput,
+} from "./pace";
 import type { WorkoutTemplate } from "./templatesApi";
 import "./workouts.css";
 
@@ -131,9 +137,9 @@ function draftFromDetail(detail: WorkoutDetail, weightUnit: "kg" | "lb", distanc
       : [createExerciseDraft({ exercise_name: "", weight: "", set_count: "1", reps: "" })],
     distance: run ? String(Number((run.distance_km * distanceMultiplier).toFixed(2))) : "",
     pace: run
-      ? String(Number(((run.pace_seconds_per_km * (distanceUnit === "mi" ? KM_PER_MI : 1)) / 60).toFixed(2)))
+      ? formatPaceInput(paceFromSecondsPerKm(run.pace_seconds_per_km, distanceUnit))
       : "",
-    calories: run ? String(run.calories) : "",
+    calories: run?.calories == null ? "" : String(run.calories),
   };
 }
 
@@ -162,7 +168,6 @@ function draftFromTemplate(
 
   const item = template.items[0];
   const distanceMultiplier = distanceUnit === "mi" ? 1 / KM_PER_MI : 1;
-  const paceMultiplier = distanceUnit === "mi" ? KM_PER_MI : 1;
   return {
     ...draft,
     title: template.name,
@@ -171,7 +176,7 @@ function draftFromTemplate(
       : String(Number((item.planned_distance_km * distanceMultiplier).toFixed(2))),
     pace: item?.planned_pace_seconds_per_km == null
       ? ""
-      : String(Number(((item.planned_pace_seconds_per_km * paceMultiplier) / 60).toFixed(4))),
+      : formatPaceInput(paceFromSecondsPerKm(item.planned_pace_seconds_per_km, distanceUnit)),
   };
 }
 
@@ -467,16 +472,23 @@ export default function Workouts({
     try {
       await onDistanceUnitChange(nextUnit);
       const distanceConversion = distanceUnit === "km" ? 1 / KM_PER_MI : KM_PER_MI;
-      const paceConversion = distanceUnit === "km" ? KM_PER_MI : 1 / KM_PER_MI;
       setDraft((current) => current
         ? {
             ...current,
             distance: current.distance === ""
               ? ""
               : String(Number((Number(current.distance) * distanceConversion).toFixed(2))),
-            pace: current.pace === ""
-              ? ""
-              : String(Number((Number(current.pace) * paceConversion).toFixed(2))),
+            pace: (() => {
+              const paceSeconds = parsePaceInput(current.pace);
+              return paceSeconds == null
+                ? current.pace
+                : formatPaceInput(
+                    paceFromSecondsPerKm(
+                      paceToSecondsPerKm(paceSeconds, distanceUnit),
+                      nextUnit,
+                    ),
+                  );
+            })(),
           }
         : current);
     } catch (error) {
@@ -490,7 +502,6 @@ export default function Workouts({
     if (!draft) return null;
     const title = draft.title.trim();
     const errors: Record<string, string> = {};
-    if (!title) errors["workout-title"] = "Enter a name for this session.";
     if (!draft.performed_on) errors["performed-on"] = "Choose the date you trained.";
 
     if (draft.activity_type === "strength") {
@@ -542,15 +553,16 @@ export default function Workouts({
     }
 
     const distance = Number(draft.distance);
-    const pace = Number(draft.pace);
-    const calories = Number(draft.calories);
+    const paceSecondsPerUnit = parsePaceInput(draft.pace);
+    const caloriesInput = draft.calories.trim();
+    const calories = caloriesInput === "" ? null : Number(caloriesInput);
     if (draft.distance === "" || !Number.isFinite(distance) || distance <= 0) {
       errors.distance = `Enter a distance greater than zero in ${distanceUnit}.`;
     }
-    if (draft.pace === "" || !Number.isFinite(pace) || pace <= 0) {
-      errors.pace = `Enter a pace greater than zero in minutes per ${distanceUnit}.`;
+    if (paceSecondsPerUnit == null) {
+      errors.pace = `Enter pace as min:sec per ${distanceUnit}, such as 8:30.`;
     }
-    if (draft.calories === "" || !Number.isInteger(calories) || calories < 0) {
+    if (calories !== null && (!Number.isInteger(calories) || calories < 0)) {
       errors.calories = "Enter whole calories (0 is okay).";
     }
     if (Object.keys(errors).length) {
@@ -565,7 +577,7 @@ export default function Workouts({
       notes: draft.notes.trim(),
       runDetails: {
         distance_km: Number((distance * (distanceUnit === "mi" ? KM_PER_MI : 1)).toFixed(5)),
-        pace_seconds_per_km: Math.round((pace * 60) / (distanceUnit === "mi" ? KM_PER_MI : 1)),
+        pace_seconds_per_km: Math.round(paceToSecondsPerKm(paceSecondsPerUnit!, distanceUnit)),
         calories,
       },
     };
@@ -869,7 +881,7 @@ export default function Workouts({
 
               <div className="workout-form-grid">
                 <label className="workout-field workout-field-wide">
-                  <span className="workout-field-label">Session name <i>Required</i></span>
+                  <span className="workout-field-label">Session name <i>Optional</i></span>
                   <input
                     id="workout-title"
                     value={draft.title}
@@ -1018,23 +1030,22 @@ export default function Workouts({
                       {fieldErrors.distance && <span className="workout-field-error" id="distance-error">{fieldErrors.distance}</span>}
                     </label>
                     <label className="workout-field">
-                      <span className="workout-field-label">Pace <i>min / {distanceUnit}</i></span>
+                      <span className="workout-field-label">Pace <i>min:sec / {distanceUnit}</i></span>
                       <input
                         id="pace"
-                        type="number"
-                        min="0"
-                        step="any"
-                        inputMode="decimal"
+                        type="text"
+                        inputMode="text"
+                        autoComplete="off"
                         value={draft.pace}
                         onChange={(event) => updateDraft("pace", event.target.value)}
-                        placeholder="0.0"
+                        placeholder="8:30"
                         aria-invalid={Boolean(fieldErrors.pace)}
-                        aria-describedby={fieldErrors.pace ? "pace-error" : undefined}
+                        aria-describedby={fieldErrors.pace ? "pace-hint pace-error" : "pace-hint"}
                       />
                       {fieldErrors.pace && <span className="workout-field-error" id="pace-error">{fieldErrors.pace}</span>}
                     </label>
                     <label className="workout-field">
-                      <span className="workout-field-label">Calories <i>kcal</i></span>
+                      <span className="workout-field-label">Calories <i>kcal · Optional</i></span>
                       <input
                         id="calories"
                         type="number"
@@ -1043,14 +1054,14 @@ export default function Workouts({
                         inputMode="numeric"
                         value={draft.calories}
                         onChange={(event) => updateDraft("calories", event.target.value)}
-                        placeholder="0"
+                        placeholder="Optional"
                         aria-invalid={Boolean(fieldErrors.calories)}
                         aria-describedby={fieldErrors.calories ? "calories-error" : undefined}
                       />
                       {fieldErrors.calories && <span className="workout-field-error" id="calories-error">{fieldErrors.calories}</span>}
                     </label>
                   </div>
-                  <p className="workout-hint">Pace is entered as decimal minutes per {distanceUnit}, such as 5.5 for 5:30.</p>
+                  <p className="workout-hint" id="pace-hint">Enter pace as minutes:seconds per {distanceUnit}, such as 8:30. Whole minutes like 9 mean 9:00.</p>
                 </div>
               )}
 
@@ -1105,7 +1116,7 @@ export default function Workouts({
                 <div className="run-summary">
                   <div><span>DISTANCE</span><strong>{Number((activeDetail.runDetails.distance_km * (distanceUnit === "mi" ? 1 / KM_PER_MI : 1)).toFixed(2))}<i>{distanceUnit}</i></strong></div>
                   <div><span>PACE</span><strong>{formatPace(activeDetail.runDetails.pace_seconds_per_km, distanceUnit)}</strong></div>
-                  <div><span>CALORIES</span><strong>{activeDetail.runDetails.calories}<i>kcal</i></strong></div>
+                  <div><span>CALORIES</span><strong>{activeDetail.runDetails.calories == null ? "Not logged" : <>{activeDetail.runDetails.calories}<i>kcal</i></>}</strong></div>
                 </div>
               ) : <p className="workout-detail-empty">No run details were recorded for this session.</p>}
               {activeDetail.workout.notes && (
