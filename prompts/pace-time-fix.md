@@ -15,3 +15,7 @@ Calories remain a run-only field. Do not add calorie tracking to strength sessio
 - Permit saving a run without calories; preserve zero as a valid explicitly-entered calorie value.
 - Permit saving a strength or run session without a custom name, using an automatic default name.
 - Keep existing workouts, authentication, and user data isolation intact.
+
+## Follow-up request
+
+Show the weekday in each session record's date, formatted as `Friday - Oct 23, 2026`. Keep the underlying date unchanged.

@@ -31,6 +31,7 @@ import {
   paceToSecondsPerKm,
   parsePaceInput,
 } from "./pace";
+import { formatSessionDate } from "./sessionDate";
 import type { WorkoutTemplate } from "./templatesApi";
 import "./workouts.css";
 
@@ -178,12 +179,6 @@ function draftFromTemplate(
       ? ""
       : formatPaceInput(paceFromSecondsPerKm(item.planned_pace_seconds_per_km, distanceUnit)),
   };
-}
-
-function formatDate(date: string) {
-  const parsed = new Date(`${date.slice(0, 10)}T12:00:00`);
-  if (Number.isNaN(parsed.getTime())) return date;
-  return new Intl.DateTimeFormat(undefined, { month: "short", day: "numeric", year: "numeric" }).format(parsed);
 }
 
 function formatPace(secondsPerKm: number, distanceUnit: "km" | "mi") {
@@ -834,7 +829,7 @@ export default function Workouts({
                     className={`workout-row${activeDetail?.workout.id === workout.id ? " is-selected" : ""}`}
                     type="button"
                     onClick={() => void openWorkout(workout.id)}
-                    aria-label={`Open ${workout.title}, ${formatDate(workout.performed_on)}`}
+                    aria-label={`Open ${workout.title}, ${formatSessionDate(workout.performed_on)}`}
                     aria-current={activeDetail?.workout.id === workout.id ? "true" : undefined}
                   >
                     <span className="workout-row-index">{String(index + 1).padStart(2, "0")}</span>
@@ -843,7 +838,7 @@ export default function Workouts({
                     </span>
                     <span className="workout-row-copy">
                       <strong>{workout.title}</strong>
-                      <span>{formatDate(workout.performed_on)}</span>
+                      <span>{formatSessionDate(workout.performed_on)}</span>
                     </span>
                     <span className={`workout-kind ${workout.activity_type}`}>{workout.activity_type === "strength" ? "STRENGTH" : "RUN"}</span>
                     <span className="workout-row-arrow" aria-hidden="true">↗</span>
@@ -1094,7 +1089,7 @@ export default function Workouts({
                 <span className={`workout-detail-mark ${activeDetail.workout.activity_type}`} aria-hidden="true">
                   {activeDetail.workout.activity_type === "strength" ? "S" : "R"}
                 </span>
-                <div><span>PERFORMED ON</span><strong>{formatDate(activeDetail.workout.performed_on)}</strong></div>
+                <div><span>PERFORMED ON</span><strong>{formatSessionDate(activeDetail.workout.performed_on)}</strong></div>
               </div>
               {activeDetail.workout.activity_type === "strength" ? (
                 <div className="detail-section">
