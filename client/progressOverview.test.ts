@@ -85,6 +85,25 @@ test("lift trends use the strongest set per session and convert weight", () => {
   assert.equal(trend[1].reps, 5);
 });
 
+test("lift chart dates stay oldest-to-newest when workout rows arrive out of order", () => {
+  const unsorted: LiftHistoryPoint[] = [
+    { workout_id: "oct-23", performed_on: "2026-10-23", exercise_name: "Squat", weight_kg: 110, reps: 5, set_number: 1 },
+    { workout_id: "oct-09", performed_on: "2026-10-09", exercise_name: "Squat", weight_kg: 90, reps: 5, set_number: 1 },
+    { workout_id: "oct-15", performed_on: "2026-10-15", exercise_name: "Squat", weight_kg: 100, reps: 5, set_number: 1 },
+  ];
+
+  const trend = liftTrendPoints(unsorted, "Squat", "kg");
+
+  assert.deepEqual(
+    trend.map((point) => [point.date, point.weight]),
+    [
+      ["2026-10-09", 90],
+      ["2026-10-15", 100],
+      ["2026-10-23", 110],
+    ],
+  );
+});
+
 test("run trends convert distance and pace to the selected unit", () => {
   const runs: RunHistoryPoint[] = [{
     workout_id: "run-a",
@@ -95,4 +114,17 @@ test("run trends convert distance and pace to the selected unit", () => {
   const trend = runTrendPoints(runs, "mi");
   assert.equal(trend[0].distance, 5.13);
   assert.equal(trend[0].pace, 531);
+});
+
+test("run charts also sort dates oldest-to-newest", () => {
+  const runs: RunHistoryPoint[] = [
+    { workout_id: "oct-23", performed_on: "2026-10-23", distance_km: 10, pace_seconds_per_km: 330 },
+    { workout_id: "oct-09", performed_on: "2026-10-09", distance_km: 5, pace_seconds_per_km: 360 },
+    { workout_id: "oct-15", performed_on: "2026-10-15", distance_km: 7, pace_seconds_per_km: 345 },
+  ];
+
+  assert.deepEqual(
+    runTrendPoints(runs, "km").map((point) => point.date),
+    ["2026-10-09", "2026-10-15", "2026-10-23"],
+  );
 });

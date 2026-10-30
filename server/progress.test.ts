@@ -121,7 +121,7 @@ test("progress points normalize database values for lift and run charts", async 
       {
         goal_id: "lift-goal",
         workout_id: "lift-workout",
-        performed_on: "2026-04-12",
+        performed_on: new Date(2026, 3, 12),
         weight_kg: "100.500",
         reps: 5,
         distance_km: null,
