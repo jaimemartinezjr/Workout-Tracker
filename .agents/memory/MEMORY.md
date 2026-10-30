@@ -1,1 +1,2 @@
 - [Feature delivery loop](feature-delivery-loop.md) — Use a GitHub issue, feature branch, saved prompt, PR, user merge, then publish for each feature.
+- [PostgreSQL DATE normalization](postgres-date-normalization.md) — Normalize node-postgres DATE values before string sorting; `String(Date)` is weekday text, not ISO.

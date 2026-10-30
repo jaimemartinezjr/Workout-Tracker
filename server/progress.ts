@@ -11,11 +11,23 @@ export type ProgressDatabase = {
 
 type UserIdResolver = (request: Request) => string | null;
 
+function normalizeCalendarDate(value: unknown) {
+  if (value instanceof Date && Number.isFinite(value.getTime())) {
+    const year = value.getFullYear();
+    const month = String(value.getMonth() + 1).padStart(2, "0");
+    const day = String(value.getDate()).padStart(2, "0");
+    return `${year}-${month}-${day}`;
+  }
+  const valueText = String(value);
+  const isoDate = valueText.match(/^\d{4}-\d{2}-\d{2}/)?.[0];
+  return isoDate ?? valueText.slice(0, 10);
+}
+
 function normalizeProgressPoint(row: Record<string, unknown>) {
   return {
     goal_id: String(row.goal_id),
     workout_id: String(row.workout_id),
-    performed_on: String(row.performed_on).slice(0, 10),
+    performed_on: normalizeCalendarDate(row.performed_on),
     weight_kg: row.weight_kg == null ? null : Number(row.weight_kg),
     reps: row.reps == null ? null : Number(row.reps),
     distance_km: row.distance_km == null ? null : Number(row.distance_km),
@@ -37,7 +49,7 @@ function isCalendarDate(value: unknown): value is string {
 function normalizeLiftHistoryPoint(row: Record<string, unknown>) {
   return {
     workout_id: String(row.workout_id),
-    performed_on: String(row.performed_on).slice(0, 10),
+    performed_on: normalizeCalendarDate(row.performed_on),
     exercise_name: String(row.exercise_name ?? ""),
     weight_kg: Number(row.weight_kg),
     reps: Number(row.reps),
@@ -48,7 +60,7 @@ function normalizeLiftHistoryPoint(row: Record<string, unknown>) {
 function normalizeRunHistoryPoint(row: Record<string, unknown>) {
   return {
     workout_id: String(row.workout_id),
-    performed_on: String(row.performed_on).slice(0, 10),
+    performed_on: normalizeCalendarDate(row.performed_on),
     distance_km: Number(row.distance_km),
     pace_seconds_per_km: Number(row.pace_seconds_per_km),
   };
@@ -95,7 +107,8 @@ export function createProgressRouter(
              longest.performed_on AS longest_run_performed_on
            FROM (VALUES (1)) AS anchor(value)
            LEFT JOIN LATERAL (
-             SELECT ls.exercise_name, ls.weight_kg, ls.reps, w.performed_on
+             SELECT ls.exercise_name, ls.weight_kg, ls.reps,
+                    w.performed_on::text AS performed_on
              FROM public.workouts w
              JOIN public.lifting_sets ls ON ls.workout_id = w.id
              WHERE w.user_id = $1
@@ -104,7 +117,7 @@ export function createProgressRouter(
              LIMIT 1
            ) heaviest ON TRUE
            LEFT JOIN LATERAL (
-             SELECT rd.distance_km, w.performed_on
+             SELECT rd.distance_km, w.performed_on::text AS performed_on
              FROM public.workouts w
              JOIN public.run_details rd ON rd.workout_id = w.id
              WHERE w.user_id = $1
@@ -115,7 +128,7 @@ export function createProgressRouter(
           [userId, weekStart],
         ),
         database.query(
-          `SELECT w.id AS workout_id, w.performed_on,
+          `SELECT w.id AS workout_id, w.performed_on::text AS performed_on,
                   ls.exercise_name, ls.weight_kg, ls.reps, ls.set_number
            FROM public.workouts w
            JOIN public.lifting_sets ls ON ls.workout_id = w.id
@@ -125,7 +138,7 @@ export function createProgressRouter(
           [userId],
         ),
         database.query(
-          `SELECT w.id AS workout_id, w.performed_on,
+          `SELECT w.id AS workout_id, w.performed_on::text AS performed_on,
                   rd.distance_km, rd.pace_seconds_per_km
            FROM public.workouts w
            JOIN public.run_details rd ON rd.workout_id = w.id
@@ -147,14 +160,14 @@ export function createProgressRouter(
                   exercise_name: String(stats.heaviest_exercise_name ?? ""),
                   weight_kg: Number(stats.heaviest_weight_kg),
                   reps: Number(stats.heaviest_reps),
-                  performed_on: String(stats.heaviest_performed_on).slice(0, 10),
+                  performed_on: normalizeCalendarDate(stats.heaviest_performed_on),
                 },
           longest_run:
             stats.longest_run_distance_km == null
               ? null
               : {
                   distance_km: Number(stats.longest_run_distance_km),
-                  performed_on: String(stats.longest_run_performed_on).slice(0, 10),
+                  performed_on: normalizeCalendarDate(stats.longest_run_performed_on),
                 },
         },
         lift_points: liftResult.rows.map(normalizeLiftHistoryPoint),
@@ -177,7 +190,7 @@ export function createProgressRouter(
 
     try {
       const result = await database.query(
-        `SELECT g.id AS goal_id, w.id AS workout_id, w.performed_on,
+        `SELECT g.id AS goal_id, w.id AS workout_id, w.performed_on::text AS performed_on,
                 best_set.weight_kg, best_set.reps,
                 NULL::NUMERIC AS distance_km,
                 NULL::INTEGER AS pace_seconds_per_km
@@ -198,7 +211,7 @@ export function createProgressRouter(
 
          UNION ALL
 
-         SELECT g.id AS goal_id, w.id AS workout_id, w.performed_on,
+         SELECT g.id AS goal_id, w.id AS workout_id, w.performed_on::text AS performed_on,
                 NULL::NUMERIC AS weight_kg,
                 NULL::INTEGER AS reps,
                 rd.distance_km,
