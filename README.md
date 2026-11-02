@@ -5,6 +5,7 @@ A personal training log for strength workouts and runs. The app uses Clerk for s
 ## What the app does
 
 - Create, view, edit, and delete strength and running workouts.
+- Reorder strength exercises while logging or editing a session using mouse/touch dragging or up/down controls, without changing the source template.
 - Set lift goals for weight and reps, and running goals for distance and pace.
 - Create reusable strength and running templates, including templates saved from a workout, and star templates for quick access.
 - Search, filter, and sort workout history.
