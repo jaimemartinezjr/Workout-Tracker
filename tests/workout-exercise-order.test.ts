@@ -94,16 +94,59 @@ async function names(page: Page) {
 
 async function drag(page: Page, sourceIndex: number, targetIndex: number) {
   const handle = page.locator(".exercise-order-handle").nth(sourceIndex);
-  const target = page.locator(".exercise-name input").nth(targetIndex);
+  const target = page.locator(".exercise-row").nth(targetIndex);
   await handle.scrollIntoViewIfNeeded();
   const start = await handle.boundingBox();
   const end = await target.boundingBox();
   assert.ok(start && end);
   await page.mouse.move(start.x + start.width / 2, start.y + start.height / 2);
   await page.mouse.down();
-  await page.mouse.move(end.x + end.width / 2, end.y + end.height / 2, { steps: 12 });
+  const placement = sourceIndex < targetIndex ? "after" : "before";
+  await page.mouse.move(end.x + end.width / 2,
+    end.y + end.height * (placement === "after" ? 0.8 : 0.2), { steps: 12 });
+  assert.equal(await target.getAttribute("data-drop-placement"), placement);
+  assert.equal(await page.locator("[data-drop-placement]").count(), 1);
   await page.mouse.up();
+  assert.equal(await page.locator("[data-drop-placement]").count(), 0);
 }
+
+test("insertion line follows before/after targets and clears on cancellation", async () => {
+  const page = await browser.newPage({ viewport: { width: 1440, height: 1500 } });
+  try {
+    await setup(page);
+    await page.locator(".exercise-order-handle").first().scrollIntoViewIfNeeded();
+    const handle = await page.locator(".exercise-order-handle").first().boundingBox();
+    const target = page.locator(".exercise-row").last();
+    const rect = await target.boundingBox();
+    assert.ok(handle && rect);
+    await page.mouse.move(handle.x + 10, handle.y + 10);
+    await page.mouse.down();
+    await page.mouse.move(rect.x + 60, rect.y + rect.height * 0.2, { steps: 10 });
+    assert.equal(await target.getAttribute("data-drop-placement"), "before");
+    await page.mouse.move(rect.x + 60, rect.y + rect.height * 0.8, { steps: 5 });
+    assert.equal(await target.getAttribute("data-drop-placement"), "after");
+    const line = await target.evaluate((row) => {
+      const style = getComputedStyle(row, "::after");
+      return { height: style.height, width: style.right, color: style.backgroundColor };
+    });
+    assert.equal(line.height, "4px");
+    assert.equal(line.width, "0px");
+    assert.equal(line.color, "rgb(185, 241, 108)");
+    await page.screenshot({ path: "/tmp/exercise-insertion-line.png" });
+    await page.keyboard.press("Escape");
+    assert.equal(await page.locator("[data-drop-placement]").count(), 0);
+    await page.mouse.up();
+    assert.deepEqual(await names(page), ["Bench press", "Squat", "Row"]);
+    // The upper half of the last row inserts before it, not after it.
+    await page.mouse.move(handle.x + 10, handle.y + 10);
+    await page.mouse.down();
+    await page.mouse.move(rect.x + 60, rect.y + rect.height * 0.2, { steps: 10 });
+    await page.mouse.up();
+    assert.deepEqual(await names(page), ["Squat", "Bench press", "Row"]);
+  } finally {
+    await page.close();
+  }
+});
 
 test("template exercises retain fields and corrections through dragging, saving and editing", async () => {
   const page = await browser.newPage({ viewport: { width: 1440, height: 1500 } });

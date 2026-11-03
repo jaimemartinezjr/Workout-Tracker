@@ -430,6 +430,10 @@
 .exercise-order-handle { display: inline-flex; align-items: center; gap: 6px; padding: 4px 9px; touch-action: none; user-select: none; cursor: grab; font-size: 11px !important; }
 .exercise-order-handle.is-dragging { cursor: grabbing; color: #b9f16c; border-color: #b9f16c; }
 .exercise-row:has(.exercise-order-handle.is-dragging) { outline: 2px solid #b9f16c; outline-offset: 2px; }
+.exercise-row[data-drop-placement] { position: relative; }
+.exercise-row[data-drop-placement]::after { content: ""; position: absolute; left: 0; right: 0; height: 4px; background: #b9f16c; box-shadow: 0 0 8px #b9f16c80; border-radius: 2px; pointer-events: none; z-index: 2; }
+.exercise-row[data-drop-placement="before"]::after { top: -7px; }
+.exercise-row[data-drop-placement="after"]::after { bottom: -7px; }
 .exercise-order-position { margin-left: auto; font-size: 11px; color: #a9b6a7; white-space: nowrap; }
 .exercise-order-step { min-width: 36px; font-size: 18px !important; cursor: pointer; }
 .exercise-order-controls button:disabled { opacity: .35; cursor: default; }

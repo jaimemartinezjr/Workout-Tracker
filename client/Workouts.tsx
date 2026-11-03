@@ -420,11 +420,15 @@ export default function Workouts({
       : current);
   };
 
-  const reorderExercise = (fromId: string, toId: string) => {
+  const reorderExercise = (fromId: string, toId: string, placement?: "before" | "after") => {
     if (!draft) return;
     const from = draft.exercises.findIndex((exercise) => exercise.id === fromId);
-    const to = draft.exercises.findIndex((exercise) => exercise.id === toId);
-    if (from < 0 || to < 0 || from === to) return;
+    const target = draft.exercises.findIndex((exercise) => exercise.id === toId);
+    if (from < 0 || target < 0 || from === target) return;
+    const to = placement
+      ? target + (placement === "after" ? 1 : 0) - (from < target ? 1 : 0)
+      : target;
+    if (from === to) return;
     const exercises = [...draft.exercises];
     const [exercise] = exercises.splice(from, 1);
     exercises.splice(to, 0, exercise);
@@ -955,7 +959,7 @@ export default function Workouts({
                             const target = draft.exercises[index + offset];
                             if (target) reorderExercise(exercise.id, target.id);
                           }}
-                          onDrop={(targetId) => reorderExercise(exercise.id, targetId)}
+                          onDrop={(targetId, placement) => reorderExercise(exercise.id, targetId, placement)}
                         />
                         <span className="set-row-number">{String(index + 1).padStart(2, "0")}</span>
                         <label className="exercise-field exercise-name">

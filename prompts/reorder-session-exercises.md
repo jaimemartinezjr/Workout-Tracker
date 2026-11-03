@@ -14,3 +14,9 @@ exercise identity, sets, reps, weight, and field corrections during moves.
 Persist the chosen session order without modifying the original template.
 Cover template-based logging, editing, saved ordering, and narrow screens.
 Push the feature branch and open a PR for the user to merge; do not publish.
+
+## Follow-up prompt
+
+Show a highlighted insertion line while dragging so the user can see where the
+exercise will land before releasing it. Support dropping before or after a row,
+and remove the indicator after dropping or cancelling.
