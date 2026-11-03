@@ -282,7 +282,7 @@ async function loadWorkoutDetail(
        FROM lifting_sets ls
        JOIN workouts w ON w.id = ls.workout_id
        WHERE ls.workout_id = $1 AND w.user_id = $2
-       ORDER BY ls.exercise_name, ls.set_number`,
+       ORDER BY ls.set_number, ls.exercise_name, ls.id`,
       [workoutId, userId],
     );
     return { workout, sets: setsResult.rows, runDetails: null };

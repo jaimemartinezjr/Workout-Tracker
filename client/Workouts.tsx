@@ -9,6 +9,7 @@ import {
 } from "react";
 import GoalsPanel from "./GoalsPanel";
 import TemplatesPanel from "./TemplatesPanel";
+import ExerciseOrderControls from "./ExerciseOrderControls";
 import {
   filterAndSortWorkouts,
   type WorkoutActivityFilter,
@@ -223,6 +224,7 @@ export default function Workouts({
   const [updatingDistanceUnit, setUpdatingDistanceUnit] = useState(false);
   const [progressRefreshKey, setProgressRefreshKey] = useState(0);
   const [templateSourceWorkout, setTemplateSourceWorkout] = useState<WorkoutDetail | null>(null);
+  const [exerciseOrderMessage, setExerciseOrderMessage] = useState("");
 
   const refreshProgress = () => {
     setProgressRefreshKey((current) => current + 1);
@@ -416,6 +418,24 @@ export default function Workouts({
     setDraft((current) => current
       ? { ...current, exercises: [...current.exercises, createExerciseDraft({ exercise_name: "", weight: "", set_count: "3", reps: "" })] }
       : current);
+  };
+
+  const reorderExercise = (fromId: string, toId: string, placement?: "before" | "after") => {
+    if (!draft) return;
+    const from = draft.exercises.findIndex((exercise) => exercise.id === fromId);
+    const target = draft.exercises.findIndex((exercise) => exercise.id === toId);
+    if (from < 0 || target < 0 || from === target) return;
+    const to = placement
+      ? target + (placement === "after" ? 1 : 0) - (from < target ? 1 : 0)
+      : target;
+    if (from === to) return;
+    const exercises = [...draft.exercises];
+    const [exercise] = exercises.splice(from, 1);
+    exercises.splice(to, 0, exercise);
+    setDraft({ ...draft, exercises });
+    setExerciseOrderMessage(
+      `${exercise.exercise_name.trim() || `Exercise ${from + 1}`} moved to position ${to + 1} of ${exercises.length}.`,
+    );
   };
 
   const removeExercise = (index: number) => {
@@ -929,7 +949,18 @@ export default function Workouts({
                   </div>
                   <div className="exercise-rows">
                     {draft.exercises.map((exercise, index) => (
-                      <div className="exercise-row" key={exercise.id}>
+                      <div className="exercise-row" key={exercise.id} data-exercise-id={exercise.id}>
+                        <ExerciseOrderControls
+                          exerciseId={exercise.id}
+                          label={exercise.exercise_name.trim() || `exercise ${index + 1}`}
+                          index={index}
+                          count={draft.exercises.length}
+                          onMove={(offset) => {
+                            const target = draft.exercises[index + offset];
+                            if (target) reorderExercise(exercise.id, target.id);
+                          }}
+                          onDrop={(targetId, placement) => reorderExercise(exercise.id, targetId, placement)}
+                        />
                         <span className="set-row-number">{String(index + 1).padStart(2, "0")}</span>
                         <label className="exercise-field exercise-name">
                           <span className="exercise-field-label">EXERCISE</span>
@@ -1000,6 +1031,8 @@ export default function Workouts({
                       </div>
                     ))}
                   </div>
+                  <p className="workouts-sr-only" role="status" aria-live="polite">{exerciseOrderMessage}</p>
+                  <p className="workout-hint">Drag exercises or use the arrow buttons to change their order for this session. Your template stays unchanged.</p>
                   <p className="workout-hint">Log sets × reps at one load, for example 3 sets × 5 reps at 275 {weightUnit}.</p>
                 </div>
               ) : (

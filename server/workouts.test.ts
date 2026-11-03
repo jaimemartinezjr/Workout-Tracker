@@ -19,7 +19,7 @@ const workoutA = {
 };
 
 class IsolatedTestDatabase implements WorkoutDatabase {
-  async query(text: string, values: unknown[] = []) {
+  async query(text: string, values: unknown[] = []): ReturnType<WorkoutDatabase["query"]> {
     const sql = text.replace(/\s+/g, " ");
     const hasOwnerGuard =
       sql.includes("user_id = $1") || sql.includes("user_id = $2");
@@ -73,12 +73,13 @@ class IsolatedTestDatabase implements WorkoutDatabase {
 
 async function withTestApp(
   run: (baseUrl: string) => Promise<void>,
+  database: WorkoutDatabase = new IsolatedTestDatabase(),
 ): Promise<void> {
   const app = express();
   app.use(express.json());
   app.use(
     "/api/workouts",
-    createWorkoutsRouter(new IsolatedTestDatabase(), (request) => {
+    createWorkoutsRouter(database, (request) => {
       const userId = request.header("x-test-user-id");
       return userId || null;
     }),
@@ -95,6 +96,34 @@ async function withTestApp(
     await once(server, "close");
   }
 }
+
+test("workout details request stored set order instead of alphabetical exercise order", async () => {
+  class OrderedTestDatabase extends IsolatedTestDatabase {
+    async query(text: string, values: unknown[] = []) {
+      if (text.includes("FROM lifting_sets ls")) {
+        assert.match(text, /ORDER BY ls\.set_number, ls\.exercise_name, ls\.id/);
+        return {
+          rows: [
+            { id: "squat", exercise_name: "Squat", set_number: 1, weight_kg: 100, reps: 5 },
+            { id: "bench", exercise_name: "Bench press", set_number: 2, weight_kg: 60, reps: 8 },
+            { id: "row", exercise_name: "Row", set_number: 3, weight_kg: 40, reps: 10 },
+          ],
+          rowCount: 3,
+        };
+      }
+      return super.query(text, values);
+    }
+  }
+  await withTestApp(async (baseUrl) => {
+    const response = await fetch(`${baseUrl}/api/workouts/${workoutA.id}`, {
+      headers: { "x-test-user-id": "user-a" },
+    });
+    assert.equal(response.status, 200);
+    const detail = await response.json();
+    assert.deepEqual(detail.sets.map((set: { exercise_name: string }) => set.exercise_name),
+      ["Squat", "Bench press", "Row"]);
+  }, new OrderedTestDatabase());
+});
 
 test("User B cannot see or access User A's workout", async () => {
   await withTestApp(async (baseUrl) => {
